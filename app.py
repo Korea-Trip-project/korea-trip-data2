@@ -366,6 +366,10 @@ def fetch_google_trends(keyword_list, target_country='KR', timeframe='today 3-m'
         # 호출 제한(429) 등 에러 시 모의 데이터로 안정적으로 우회
         return get_mock_google_trends(keyword_list), True
 
+# 세션 상태 초기화 (상세 보기 대상 도시 추적용)
+if 'detail_city' not in st.session_state:
+    st.session_state.detail_city = None
+
 # ==========================================
 # 3. 사이드바 - 설정 컨트롤
 # ==========================================
@@ -775,13 +779,19 @@ with tab_trends:
                 }
                 city_ko = city_to_ko.get(city, city)
                 
-                # 세련된 순위별 카드식 UI (다크 모드 글래스모피즘 어울림)
-                st.markdown(f"""
-                    <div style='background: rgba(22, 29, 48, 0.6); padding: 12px 20px; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid {"#00D2C4" if idx == 0 else "#0077FF" if idx == 1 else "#FF758F" if idx == 2 else "rgba(255,255,255,0.1)"}; display: flex; justify-content: space-between; align-items: center;'>
-                        <span style='font-weight: 700; color: #F8FAFC; font-size: 1.05rem;'>{medal} : &nbsp; {city_ko} ({city})</span>
-                        <span style='color: #00D2C4; font-weight: 800; font-size: 1.1rem;'>{score:.1f} <span style='font-size: 0.8rem; color:#64748B;'>점</span></span>
-                    </div>
-                """, unsafe_allow_html=True)
+                # 세련된 순위별 카드식 UI와 상세분석 버튼을 배치하는 가로 레이아웃
+                col_card, col_btn = st.columns([7.5, 2.5])
+                with col_card:
+                    st.markdown(f"""
+                        <div style='background: rgba(22, 29, 48, 0.6); padding: 12px 20px; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid {"#00D2C4" if idx == 0 else "#0077FF" if idx == 1 else "#FF758F" if idx == 2 else "rgba(255,255,255,0.1)"}; display: flex; justify-content: space-between; align-items: center; height: 48px;'>
+                            <span style='font-weight: 700; color: #F8FAFC; font-size: 0.95rem;'>{medal} : &nbsp; {city_ko} ({city})</span>
+                            <span style='color: #00D2C4; font-weight: 800; font-size: 1.05rem;'>{score:.1f} <span style='font-size: 0.75rem; color:#64748B;'>점</span></span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                with col_btn:
+                    if st.button("📊 분석", key=f"btn_detail_{city}", use_container_width=True, help=f"{city_ko} 외국인 통계 분석 보기"):
+                        st.session_state.detail_city = city
+                        st.rerun()
                 
         with col_rank2:
             st.markdown(f"<h5 style='color:#E2E8F0; font-weight:600; text-align: center; margin-bottom: 15px;'>🗺️ '{selected_country_name}' 선호 검색 지역 지도 시각화</h5>", unsafe_allow_html=True)
@@ -930,6 +940,238 @@ with tab_trends:
         
     st.markdown("</div>", unsafe_allow_html=True)
     
+    # ----------------- 국가별 관광객 유입 분포 및 성/연령 분포 상세 프로필 섹션 -----------------
+    if st.session_state.detail_city:
+        detail_city_name = st.session_state.detail_city
+        
+        # 영문명 -> 한글명 매핑
+        city_to_ko = {
+            "Daegu": "대구", "Incheon": "인천", "Gwangju": "광주", "Daejeon": "대전", 
+            "Ulsan": "울산", "Sejong": "세종", "Gyeonggi": "경기", "Gangwon": "강원", 
+            "Chungbuk": "충북", "Chungnam": "충남", "Jeonbuk": "전북", "Jeonnam": "전남", 
+            "Gyeongbuk": "경북", "Gyeongnam": "경남"
+        }
+        
+        # 한글 풀네임 매핑 (통계 가중치 딕셔너리 매칭용)
+        city_to_full_ko = {
+            "Daegu": "대구광역시", "Incheon": "인천광역시", "Gwangju": "광주광역시", "Daejeon": "대전광역시", 
+            "Ulsan": "울산광역시", "Sejong": "세종특별자치시", "Gyeonggi": "경기도", "Gangwon": "강원특별자치도", 
+            "Chungbuk": "충청북도", "Chungnam": "충청남도", "Jeonbuk": "전라북도", "Jeonnam": "전라남도", 
+            "Gyeongbuk": "경상북도", "Gyeongnam": "경상남도"
+        }
+        
+        detail_city_ko = city_to_ko.get(detail_city_name, detail_city_name)
+        detail_city_full = city_to_full_ko.get(detail_city_name, detail_city_name)
+        
+        st.markdown("<br/>", unsafe_allow_html=True)
+        
+        # Glassmorphism 스타일 카드 상자로 감싸기
+        st.markdown(f"""
+            <div style='background: rgba(0, 210, 196, 0.03); border: 1px solid rgba(0, 210, 196, 0.15); padding: 25px; border-radius: 12px; margin-bottom: 20px;'>
+        """, unsafe_allow_html=True)
+        
+        col_dt_title, col_dt_close = st.columns([8.5, 1.5])
+        with col_dt_title:
+            st.markdown(f"<h3 style='font-size: 1.35rem; color: #00D2C4; font-weight: 700; margin: 0;'>📍 [{detail_city_ko}] 외국인 관광객 국가별 유입/소비 & 인구통계 상세 프로파일</h3>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color: #94A3B8; font-size: 0.9rem; margin-top: 5px; margin-bottom: 15px;'>해당 도시의 국가별 유입 점유율과 소비 패턴, 그리고 국가별 성별/연령대 인구통계 분포를 한눈에 비교 분석합니다.</p>", unsafe_allow_html=True)
+        with col_dt_close:
+            if st.button("❌ 상세 닫기", key="close_detail_view", use_container_width=True):
+                st.session_state.detail_city = None
+                st.rerun()
+                
+        # 1단: 국가별 유입 비율 및 주요 소비 분야
+        col_det_1, col_det_2 = st.columns(2)
+        
+        with col_det_1:
+            st.markdown("<div style='background: rgba(17, 24, 39, 0.5); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);'>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='font-size: 1rem; color: #E2E8F0; margin-top: 0; margin-bottom: 15px;'>🌐 국적별 외래 관광객 유입 비율</h4>", unsafe_allow_html=True)
+            
+            # 지역별 실질 국적 분포 데이터셋 (기존 데이터셋 재활용)
+            national_shares = {
+                "제주특별자치도": {"대만 (TW)": 38.0, "중국 (CN)": 28.0, "동남아 (SEA)": 16.0, "미국 (US)": 8.0, "일본 (JP)": 6.0, "유럽/기타": 4.0},
+                "서울특별시": {"일본 (JP)": 34.0, "미국 (US)": 22.0, "중국 (CN)": 18.0, "대만 (TW)": 12.0, "동남아 (SEA)": 8.0, "유럽/기타": 6.0},
+                "부산광역시": {"일본 (JP)": 42.0, "대만 (TW)": 24.0, "미국 (US)": 12.0, "동남아 (SEA)": 10.0, "중국 (CN)": 7.0, "유럽/기타": 5.0},
+                "강원특별자치도": {"동남아 (SEA)": 36.0, "대만 (TW)": 22.0, "미국 (US)": 16.0, "홍콩 (HK)": 12.0, "일본 (JP)": 8.0, "유럽/기타": 6.0},
+                "경기도": {"미국 (US)": 28.0, "동남아 (SEA)": 26.0, "중국 (CN)": 18.0, "일본 (JP)": 12.0, "대만 (TW)": 10.0, "유럽/기타": 6.0},
+                "인천광역시": {"미국 (US)": 32.0, "중국 (CN)": 24.0, "동남아 (SEA)": 16.0, "일본 (JP)": 12.0, "대만 (TW)": 10.0, "유럽/기타": 6.0}
+            }
+            default_shares = {"일본 (JP)": 28.0, "미국 (US)": 20.0, "대만 (TW)": 18.0, "동남아 (SEA)": 16.0, "중국 (CN)": 12.0, "유럽/기타": 6.0}
+            
+            shares = national_shares.get(detail_city_full, default_shares)
+            df_national = pd.DataFrame(list(shares.items()), columns=["국적", "유입 비중 (%)"])
+            
+            fig_donut = px.pie(
+                df_national,
+                values="유입 비중 (%)",
+                names="국적",
+                hole=0.45,
+                color_discrete_sequence=px.colors.qualitative.Bold,
+                template="plotly_dark"
+            )
+            fig_donut.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=260,
+                legend=dict(font=dict(color="#94A3B8"), orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5)
+            )
+            st.plotly_chart(fig_donut, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        with col_det_2:
+            st.markdown("<div style='background: rgba(17, 24, 39, 0.5); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);'>", unsafe_allow_html=True)
+            st.markdown(f"<h4 style='font-size: 1rem; color: #E2E8F0; margin-top: 0; margin-bottom: 15px;'>🛍️ 국적별 주요 소비 분야 다양성 (%)</h4>", unsafe_allow_html=True)
+            
+            consume_data = [
+                {"국적": "일본 (JP)", "쇼핑 (뷰티/의류)": 45.0, "식음료 (맛집/카페)": 35.0, "숙박 (호텔)": 12.0, "문화/레저": 5.0, "교통": 3.0},
+                {"국적": "대만 (TW)", "쇼핑 (뷰티/의류)": 32.0, "식음료 (맛집/카페)": 42.0, "숙박 (호텔)": 15.0, "문화/레저": 7.0, "교통": 4.0},
+                {"국적": "미국 (US)", "쇼핑 (뷰티/의류)": 12.0, "식음료 (맛집/카페)": 28.0, "숙박 (호텔)": 38.0, "문화/레저": 12.0, "교통": 10.0},
+                {"국적": "동남아 (SEA)", "쇼핑 (뷰티/의류)": 25.0, "식음료 (맛집/카페)": 22.0, "숙박 (호텔)": 18.0, "문화/레저": 30.0, "교통": 5.0},
+                {"국적": "중국 (CN)", "쇼핑 (뷰티/의류)": 52.0, "식음료 (맛집/카페)": 20.0, "숙박 (호텔)": 16.0, "문화/레저": 8.0, "교통": 4.0},
+                {"국적": "유럽/기타", "쇼핑 (뷰티/의류)": 10.0, "식음료 (맛집/카페)": 26.0, "숙박 (호텔)": 35.0, "문화/레저": 18.0, "교통": 11.0}
+            ]
+            df_consume = pd.DataFrame(consume_data)
+            
+            # 필터링된 국적에 맞추어 막대 정렬
+            target_national_list = list(shares.keys())
+            df_consume_filtered = df_consume[df_consume["국적"].isin(target_national_list)].copy()
+            
+            fig_stacked = px.bar(
+                df_consume_filtered,
+                x="국적",
+                y=["쇼핑 (뷰티/의류)", "식음료 (맛집/카페)", "숙박 (호텔)", "문화/레저", "교통"],
+                labels={"value": "소비 비중 (%)", "variable": "소비 분야"},
+                template="plotly_dark",
+                color_discrete_sequence=px.colors.qualitative.Pastel
+            )
+            fig_stacked.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=260,
+                legend=dict(font=dict(color="#94A3B8"), orientation="h", yanchor="bottom", y=-0.25, xanchor="center", x=0.5)
+            )
+            st.plotly_chart(fig_stacked, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        # 2단: 국가별 성별 및 연령대 분포 (인구통계 프로파일)
+        st.markdown("<br/>", unsafe_allow_html=True)
+        st.markdown(f"<div style='background: rgba(0, 210, 196, 0.05); padding: 15px; border-radius: 8px; margin-bottom: 15px;'>", unsafe_allow_html=True)
+        
+        col_sel_title, col_sel_box = st.columns([6, 4])
+        with col_sel_title:
+            st.markdown(f"<h4 style='font-size: 1.1rem; color: #FFFFFF; font-weight: 700; margin: 8px 0;'>🌍 국가별 성별 및 연령대 상세 인구통계</h4>", unsafe_allow_html=True)
+        with col_sel_box:
+            selected_detail_country = st.selectbox(
+                f"📊 상세 인구통계를 분석할 국가 선택",
+                list(shares.keys()),
+                index=0,
+                key="detail_country_selectbox"
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # 선택된 국가에 따른 성별/연령대 데이터 생성 로직
+        random.seed(hash(detail_city_name + selected_detail_country) % 10000)
+        
+        # 성별 비중 생성 (국가별 기본 특성 반영)
+        male_pct = 45.0
+        if "일본" in selected_detail_country:
+            male_pct = 32.0 + random.uniform(-3.0, 3.0)
+        elif "중국" in selected_detail_country:
+            male_pct = 38.0 + random.uniform(-4.0, 4.0)
+        elif "미국" in selected_detail_country:
+            male_pct = 51.0 + random.uniform(-2.0, 2.0)
+        elif "대만" in selected_detail_country:
+            male_pct = 36.0 + random.uniform(-3.0, 3.0)
+        else:
+            male_pct = 45.0 + random.uniform(-5.0, 5.0)
+            
+        female_pct = 100.0 - male_pct
+        
+        df_gender = pd.DataFrame([
+            {"성별": "남성 (Male)", "비율 (%)": round(male_pct, 1)},
+            {"성별": "여성 (Female)", "비율 (%)": round(female_pct, 1)}
+        ])
+        
+        # 연령대 비중 생성 (국가별 기본 특성 반영)
+        age_ranges = ["10대", "20대", "30대", "40대", "50대", "60대 이상"]
+        
+        if "일본" in selected_detail_country:
+            # 20-30대 압도적 비중
+            age_shares = [10.0, 42.0, 25.0, 12.0, 8.0, 3.0]
+        elif "미국" in selected_detail_country or "유럽" in selected_detail_country:
+            # 30-40대 비중이 높은 비즈니스/장거리 관광객 패턴
+            age_shares = [4.0, 18.0, 32.0, 26.0, 14.0, 6.0]
+        elif "중국" in selected_detail_country:
+            # 20대 쇼핑객 및 패밀리 관광객
+            age_shares = [8.0, 38.0, 28.0, 14.0, 8.0, 4.0]
+        else:
+            # 기본 동남아/대만 분포 (젊은 개별여행객 위주)
+            age_shares = [9.0, 35.0, 29.0, 15.0, 9.0, 3.0]
+            
+        # 정밀화와 랜덤 오차 부여
+        raw_shares = [max(1.0, val + random.uniform(-2.0, 2.0)) for val in age_shares]
+        sum_shares = sum(raw_shares)
+        age_pcts = [round(val / sum_shares * 100, 1) for val in raw_shares]
+        
+        df_age = pd.DataFrame({
+            "연령대": age_ranges,
+            "비율 (%)": age_pcts
+        })
+        
+        col_dem_1, col_dem_2 = st.columns(2)
+        
+        with col_dem_1:
+            st.markdown("<div style='background: rgba(17, 24, 39, 0.5); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);'>", unsafe_allow_html=True)
+            st.markdown(f"<h5 style='font-size: 0.95rem; color: #E2E8F0; margin-top: 0; margin-bottom: 15px;'>⚧️ [{selected_detail_country}] 성별 분포</h5>", unsafe_allow_html=True)
+            
+            fig_gender = px.pie(
+                df_gender,
+                values="비율 (%)",
+                names="성별",
+                hole=0.4,
+                color="성별",
+                color_discrete_map={"남성 (Male)": "#0077FF", "여성 (Female)": "#FF758F"},
+                template="plotly_dark"
+            )
+            fig_gender.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=240,
+                legend=dict(font=dict(color="#94A3B8"))
+            )
+            st.plotly_chart(fig_gender, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        with col_dem_2:
+            st.markdown("<div style='background: rgba(17, 24, 39, 0.5); padding: 20px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05);'>", unsafe_allow_html=True)
+            st.markdown(f"<h5 style='font-size: 0.95rem; color: #E2E8F0; margin-top: 0; margin-bottom: 15px;'>🎂 [{selected_detail_country}] 연령대별 분포</h5>", unsafe_allow_html=True)
+            
+            fig_age = px.bar(
+                df_age,
+                x="연령대",
+                y="비율 (%)",
+                color="비율 (%)",
+                color_continuous_scale=["#111827", "#00D2C4"],
+                labels={"비율 (%)": "유입 비율 (%)", "연령대": "연령 구분"},
+                template="plotly_dark"
+            )
+            fig_age.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                coloraxis_showscale=False,
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=240,
+                xaxis=dict(showgrid=False),
+                yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)")
+            )
+            st.plotly_chart(fig_age, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     # ----------------- SNS 키워드 분석 섹션 병합 -----------------
     st.markdown("<br/><hr/><br/>", unsafe_allow_html=True)
     st.markdown("<h3 style='font-weight: 600; color: #F8FAFC;'>📱 SNS 관광 관심도 키워드별 분석</h3>", unsafe_allow_html=True)
