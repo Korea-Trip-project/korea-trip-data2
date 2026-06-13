@@ -758,42 +758,54 @@ with tab_trends:
         # 최종 시각화와 출력을 위해 상위 Top 5로 슬라이싱하여 할당
         rank_data = rank_data.head(5).copy()
         
-        # 순위판 및 지도 시각화 레이아웃 구성 (2열 레이아웃, 바 차트 제거)
-        col_rank1, col_rank2 = st.columns([4, 6])
+        # 순위판 및 지도 시각화 레이아웃 구성 (좌측: 지도, 우측: 1위 지역 지표)
+        col_map_left, col_metrics_right = st.columns([6.5, 3.5])
         
-        with col_rank1:
-            st.markdown("<h5 style='color:#E2E8F0; font-weight:600; margin-bottom: 15px;'>🏆 한국 주요 도시 검색 관심도 Top 5 (서울, 부산, 제주 제외)</h5>", unsafe_allow_html=True)
+        # 구글 트렌드 1위 도시 기본 연동 및 지표 계산
+        top1_city_en = rank_data.iloc[0]["도시명"] # 예: "Gyeonggi"
+        city_to_code = {
+            "Daegu": "27", "Incheon": "28", "Gwangju": "29", "Daejeon": "30", 
+            "Ulsan": "31", "Sejong": "36", "Gyeonggi": "41", "Gangwon": "42", 
+            "Chungbuk": "43", "Chungnam": "44", "Jeonbuk": "45", "Jeonnam": "46", 
+            "Gyeongbuk": "47", "Gyeongnam": "48"
+        }
+        city_to_ko_map = {
+            "Daegu": "대구", "Incheon": "인천", "Gwangju": "광주", "Daejeon": "대전", 
+            "Ulsan": "울산", "Sejong": "세종", "Gyeonggi": "경기", "Gangwon": "강원", 
+            "Chungbuk": "충북", "Chungnam": "충남", "Jeonbuk": "전북", "Jeonnam": "전남", 
+            "Gyeongbuk": "경북", "Gyeongnam": "경남"
+        }
+        
+        top1_code = city_to_code.get(top1_city_en, "41")
+        top1_city_ko = city_to_ko_map.get(top1_city_en, top1_city_en)
+        
+        # 1위 지역의 통계 데이터 생성
+        df_div_top1, df_res_top1 = generate_demo_data(top1_code, base_ym)
+        
+        # 내국인 제외 정제 가중치 반영
+        df_res_top1 = df_res_top1[df_res_top1['demandMetric'] != '내비게이션 목적지 검색량']
+        df_res_top1['demandValue'] = df_res_top1.apply(
+            lambda r: r['demandValue'] * 0.12 if r['demandMetric'] in ['SNS 언급량', '업종별 관광 소비액'] else r['demandValue'], axis=1
+        )
+        df_div_top1['touDivValue'] = df_div_top1.apply(
+            lambda r: round(r['touDivValue'] * (0.85 if r['expDivIxCd'] in ['3202', '3203'] else 0.25), 2), axis=1
+        )
+        
+        top1_avg_div = df_div_top1['touDivValue'].mean()
+        
+        top1_sns_val = 50000
+        sns_row = df_res_top1[df_res_top1['demandMetric'] == 'SNS 언급량']
+        if not sns_row.empty:
+            top1_sns_val = sns_row.iloc[0]['demandValue']
             
-            medals = ["🥇 1위", "🥈 2위", "🥉 3위", "4위", "5위"]
-            for idx, row in rank_data.iterrows():
-                city = row["도시명"]
-                score = row["검색 관심도 평균"]
-                medal = medals[idx] if idx < len(medals) else f"{idx+1}위"
-                
-                # 도시 영문명 -> 한글명 매핑
-                city_to_ko = {
-                    "Daegu": "대구", "Incheon": "인천", "Gwangju": "광주", "Daejeon": "대전", 
-                    "Ulsan": "울산", "Sejong": "세종", "Gyeonggi": "경기", "Gangwon": "강원", 
-                    "Chungbuk": "충북", "Chungnam": "충남", "Jeonbuk": "전북", "Jeonnam": "전남", 
-                    "Gyeongbuk": "경북", "Gyeongnam": "경남"
-                }
-                city_ko = city_to_ko.get(city, city)
-                
-                # 세련된 순위별 카드식 UI와 상세분석 버튼을 배치하는 가로 레이아웃
-                col_card, col_btn = st.columns([7.5, 2.5])
-                with col_card:
-                    st.markdown(f"""
-                        <div style='background: rgba(22, 29, 48, 0.6); padding: 12px 20px; border-radius: 10px; margin-bottom: 8px; border-left: 4px solid {"#00D2C4" if idx == 0 else "#0077FF" if idx == 1 else "#FF758F" if idx == 2 else "rgba(255,255,255,0.1)"}; display: flex; justify-content: space-between; align-items: center; height: 48px;'>
-                            <span style='font-weight: 700; color: #F8FAFC; font-size: 0.95rem;'>{medal} : &nbsp; {city_ko} ({city})</span>
-                            <span style='color: #00D2C4; font-weight: 800; font-size: 1.05rem;'>{score:.1f} <span style='font-size: 0.75rem; color:#64748B;'>점</span></span>
-                        </div>
-                    """, unsafe_allow_html=True)
-                with col_btn:
-                    if st.button("📊 분석", key=f"btn_detail_{city}", use_container_width=True, help=f"{city_ko} 외국인 통계 분석 보기"):
-                        st.session_state.detail_city = city
-                        st.rerun()
-                
-        with col_rank2:
+        top1_attract_score = min(100.0, top1_avg_div * 1.15)
+        
+        top1_consume_val = 500000000
+        con_row = df_res_top1[df_res_top1['demandMetric'] == '업종별 관광 소비액']
+        if not con_row.empty:
+            top1_consume_val = con_row.iloc[0]['demandValue']
+            
+        with col_map_left:
             st.markdown(f"<h5 style='color:#E2E8F0; font-weight:600; text-align: center; margin-bottom: 15px;'>🗺️ '{selected_country_name}' 선호 검색 지역 지도 시각화</h5>", unsafe_allow_html=True)
             
             # GeoJSON 파일 로드
@@ -834,13 +846,6 @@ with tab_trends:
                     "Gyeongnam": (35.4606, 128.2132)
                 }
                 
-                city_to_ko = {
-                    "Daegu": "대구", "Incheon": "인천", "Gwangju": "광주", "Daejeon": "대전", 
-                    "Ulsan": "울산", "Sejong": "세종", "Gyeonggi": "경기", "Gangwon": "강원", 
-                    "Chungbuk": "충북", "Chungnam": "충남", "Jeonbuk": "전북", "Jeonnam": "전남", 
-                    "Gyeongbuk": "경북", "Gyeongnam": "경남"
-                }
-                
                 all_geojson_names = [f['properties']['name_eng'] for f in geojson['features']]
                 geojson_to_city_key = {v: k for k, v in city_to_geojson_name.items()}
                 
@@ -854,7 +859,7 @@ with tab_trends:
                         top5_map[g_name] = {
                             "rank": idx + 1,
                             "score": score,
-                            "city_ko": city_to_ko.get(city_name, city_name)
+                            "city_ko": city_to_ko_map.get(city_name, city_name)
                         }
                 
                 # 전체 지도 데이터 생성 (Top 5는 점수 반영, 나머지는 0점 처리하여 순위권만 진하게 표시)
@@ -878,14 +883,20 @@ with tab_trends:
                         })
                 df_map = pd.DataFrame(features_data)
                 
-                # 1) Choropleth 지도로 행정구역 색상 표현
+                # 1) Choropleth 지도로 행정구역 색상 표현 (순위권 밖은 흰색 #FFFFFF, 순위권은 선명한 원색 #00D2C4)
+                color_scale = [
+                    [0.0, "#FFFFFF"],
+                    [0.001, "#E6F9F8"],
+                    [1.0, "#00D2C4"]
+                ]
+                
                 fig_map = px.choropleth(
                     df_map,
                     geojson=geojson,
                     locations="geojson_name",
                     featureidkey="properties.name_eng",
                     color="score",
-                    color_continuous_scale=["rgba(17, 24, 39, 0.4)", "#00D2C4"],
+                    color_continuous_scale=color_scale,
                     template="plotly_dark",
                     projection="mercator"
                 )
@@ -906,7 +917,7 @@ with tab_trends:
                         lat, lon = city_coords[city_name]
                         top5_lat.append(lat)
                         top5_lon.append(lon)
-                        top5_labels.append(f"<b>{idx+1}위 - {city_to_ko.get(city_name, city_name)}</b>")
+                        top5_labels.append(f"<b>{idx+1}위 - {city_to_ko_map.get(city_name, city_name)}</b>")
                         
                 fig_map.add_trace(ob.Scattergeo(
                     lat=top5_lat,
@@ -929,6 +940,43 @@ with tab_trends:
                 st.plotly_chart(fig_map, use_container_width=True)
             else:
                 st.warning("⚠️ 지도 데이터를 로드할 수 없어 시각화를 표시할 수 없습니다.")
+                
+        with col_metrics_right:
+            st.markdown(f"""
+                <div style='background: rgba(22, 29, 48, 0.5); padding: 22px; border-radius: 16px; border: 1px solid rgba(0, 210, 196, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);'>
+                    <h5 style='color: #00D2C4; font-weight: 800; font-size: 1.15rem; margin-top: 0; margin-bottom: 5px;'>📍 구글 트렌드 1위 지역 핵심 지표</h5>
+                    <p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 18px;'>검색 관심도가 가장 높은 <b>{top1_city_ko} ({top1_city_en})</b>의 외국인 관광 관련 정밀 분석 데이터입니다.</p>
+                    
+                    <!-- 지표 1: 평균 관광 다양성 지수 -->
+                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #00D2C4;'>
+                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📊 평균 관광 다양성 지수</span>
+                        <h3 style='color: #00D2C4; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_avg_div:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
+                    </div>
+                    
+                    <!-- 지표 2: SNS 관광 관심도 (언급량) -->
+                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FF758F;'>
+                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📱 SNS 관광 관심도 (언급량)</span>
+                        <h3 style='color: #FF758F; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_sns_val:,.0f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>건</span></h3>
+                    </div>
+                    
+                    <!-- 지표 3: 국제적 관광 매력도 지수 -->
+                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FFD166;'>
+                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>🌍 국제적 관광 매력도 지수</span>
+                        <h3 style='color: #FFD166; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_attract_score:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
+                    </div>
+                    
+                    <!-- 지표 4: 추정 관광 소비 규모 -->
+                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; border-left: 4px solid #0077FF;'>
+                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>💳 추정 관광 소비 규모</span>
+                        <h3 style='color: #0077FF; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_consume_val/100000000:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>억원</span></h3>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 사용자에게 1위 도시 클릭 유도 및 세부 데이터 연동
+            if st.button(f"🔍 {top1_city_ko} 외국인 정밀 분석 뷰 열기", key="btn_open_detail_top1", use_container_width=True):
+                st.session_state.detail_city = top1_city_en
+                st.rerun()
             
         st.markdown("<br/>", unsafe_allow_html=True)
         if is_mock:
