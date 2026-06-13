@@ -684,7 +684,7 @@ with tab_trends:
         selected_city_en = st.session_state.selected_metric_city
         
         # 순위판 및 지도 시각화 레이아웃 구성 (좌측: 지도 및 도시선택 단추, 우측: 선택 도시 지표)
-        col_map_left, col_metrics_right = st.columns([6.5, 3.5])
+        col_map_left, col_metrics_right = st.columns([7.2, 2.8])
         
         city_to_code = {
             "Daegu": "27", "Incheon": "28", "Gwangju": "29", "Daejeon": "30", 
@@ -731,164 +731,205 @@ with tab_trends:
         with col_map_left:
             st.markdown("<p style='color:#94A3B8; font-size:0.92rem; font-weight:600; margin-bottom:8px;'>📍 분석할 순위권 도시를 선택하세요 (우측 지표가 연동됩니다):</p>", unsafe_allow_html=True)
             
-            # 가로 버튼 바 (5개 컬럼 구성)
-            col_btn_group = st.columns(5)
-            medals = ["🥇 1위", "🥈 2위", "🥉 3위", "4위", "5위"]
+
             
-            for idx, row in rank_data.iterrows():
-                city_name = row["도시명"]
-                city_ko_btn = city_to_ko_map.get(city_name, city_name)
-                medal_btn = medals[idx]
-                with col_btn_group[idx]:
-                    is_active = (selected_city_en == city_name)
-                    # 선택된 버튼은 파란색 주력 단추로 활성화
-                    if st.button(f"{medal_btn} {city_ko_btn}", key=f"select_metric_{city_name}", use_container_width=True, type="primary" if is_active else "secondary"):
-                        st.session_state.selected_metric_city = city_name
-                        st.rerun()
-            
-            st.markdown("<br/>", unsafe_allow_html=True)
-            
-            # 단순화되고 귀여운 격자형 블록맵 (Tile Grid Map) 정의
-            grid_coords = {
-                "Incheon": (1.0, 4.0),
-                "Gyeonggi": (2.0, 4.0),
-                "Gangwon": (3.5, 4.0),
-                "Chungnam": (1.0, 3.0),
-                "Sejong": (2.0, 3.0),
-                "Chungkb": (3.0, 3.0),  # Chungbuk
-                "Gyeongbuk": (4.0, 3.0),
-                "Daejeon": (2.0, 2.0),
-                "Daegu": (3.2, 2.0),
-                "Ulsan": (4.2, 1.8),
-                "Jeonbuk": (1.3, 1.3),
-                "Gyeongnam": (3.2, 1.2),
-                "Gwangju": (1.0, 0.4),
-                "Jeonnam": (2.0, 0.4)
-            }
-            
-            # app.py 내의 영문 키명 보정
-            city_key_map = {
+            import json
+            # 실제 대한민국 시도별 GeoJSON 데이터 로드 (가벼운 단순화 버전 사용)
+            with open("skorea_provinces_geo_simple.json", "r", encoding="utf-8") as f:
+                geojson_data = json.load(f)
+                
+            geojson_map = {
                 "Daegu": "Daegu", "Incheon": "Incheon", "Gwangju": "Gwangju", "Daejeon": "Daejeon",
-                "Ulsan": "Ulsan", "Sejong": "Sejong", "Gyeonggi": "Gyeonggi", "Gangwon": "Gangwon",
-                "Chungbuk": "Chungkb", "Chungnam": "Chungnam", "Jeonbuk": "Jeonbuk", "Jeonnam": "Jeonnam",
-                "Gyeongbuk": "Gyeongbuk", "Gyeongnam": "Gyeongnam"
+                "Ulsan": "Ulsan", "Sejong": "Sejongsi", "Gyeonggi": "Gyeonggi-do", "Gangwon": "Gangwon-do",
+                "Chungbuk": "Chungcheongbuk-do", "Chungnam": "Chungcheongnam-do", "Jeonbuk": "Jeollabuk-do", 
+                "Jeonnam": "Jeollanam-do", "Gyeongbuk": "Gyeongsangbuk-do", "Gyeongnam": "Gyeongsangnam-do"
             }
             
-            grid_data = []
+            # 각 지역별 중심점 (어노테이션 라인을 그리기 위한 기준 좌표)
+            city_centroids = {
+                "Daegu": (35.8714, 128.6014), "Incheon": (37.4563, 126.7052), 
+                "Gwangju": (35.1595, 126.8526), "Daejeon": (36.3504, 127.3845),
+                "Ulsan": (35.5384, 129.3114), "Sejong": (36.4800, 127.2890), 
+                "Gyeonggi": (37.2636, 127.0286), "Gangwon": (37.8859, 128.1552),
+                "Chungbuk": (36.6358, 127.4912), "Chungnam": (36.6588, 126.6728), 
+                "Jeonbuk": (35.7175, 127.1530), "Jeonnam": (34.8161, 126.4629), 
+                "Gyeongbuk": (36.5760, 128.5056), "Gyeongnam": (35.2383, 128.6922)
+            }
+            
+            map_data = []
             for city_key in all_cities:
-                mapped_key = city_key_map.get(city_key, city_key)
-                x, y = grid_coords.get(mapped_key, (0.0, 0.0))
+                mapped_name = geojson_map.get(city_key, city_key)
                 city_ko = city_to_ko_map.get(city_key, city_key)
                 
                 # Top 5 랭킹 대조
                 match_row = rank_data[rank_data["도시명"] == city_key]
                 if not match_row.empty:
                     rank_val = int(match_row.iloc[0]["순위"])
-                    score = float(match_row.iloc[0]["검색 관심도 평균"])
-                    
-                    # 순위별 고유 비비드 원색 지정
                     color_palette = {
-                        1: "#FF758F",  # 1위: 비비드 네온 핑크
-                        2: "#0077FF",  # 2위: 딥 블루
-                        3: "#FFD166",  # 3위: 노란색/골드
-                        4: "#06D6A0",  # 4위: 민트 그린
-                        5: "#9B5DE5"   # 5위: 퍼플
+                        1: "#3b82f6", # Blue
+                        2: "#10b981", # Emerald
+                        3: "#818cf8", # Indigo/Purple
+                        4: "#f59e0b", # Amber
+                        5: "#ec4899"  # Pink
                     }
-                    marker_color = color_palette.get(rank_val, "#00D2C4")
-                    label = f"<b>{rank_val}위</b><br/>{city_ko}"
-                    is_top = True
+                    marker_color = color_palette.get(rank_val, "#3b82f6")
                 else:
                     rank_val = 99
-                    score = 0.0
-                    marker_color = "#FFFFFF"  # 순위권 밖은 깨끗한 흰색
-                    label = f"<span style='color:#64748B;'>{city_ko}</span>"
-                    is_top = False
+                    marker_color = "#64748b"  # 순위권 밖 지역 진한 회색 (slate-500)
                     
-                grid_data.append({
+                map_data.append({
                     "city": city_key,
                     "city_ko": city_ko,
-                    "x": x,
-                    "y": y,
+                    "name_eng": mapped_name,
                     "color": marker_color,
-                    "label": label,
-                    "score": score,
-                    "rank": rank_val,
-                    "is_top": is_top
+                    "rank": rank_val
                 })
                 
-            df_grid = pd.DataFrame(grid_data)
+            df_map = pd.DataFrame(map_data)
+            df_top = df_map[df_map["rank"] < 99].sort_values(by="rank")
             
-            # Plotly Graph Objects를 사용해 귀여운 타일 히스토그램 블록맵 구성
-            fig_grid = ob.Figure()
+            fig_map = px.choropleth(
+                df_map,
+                geojson=geojson_data,
+                locations="name_eng",
+                featureidkey="properties.name_eng",
+                color="color",
+                color_discrete_map="identity",
+                hover_name="city_ko",
+                hover_data={"color": False, "name_eng": False},
+                custom_data=["city"],
+            )
             
-            # 1. 순위권 밖 (흰색 격자 사각형으로 미니멀하게 드로잉)
-            df_outer = df_grid[df_grid["rank"] == 99]
-            fig_grid.add_trace(ob.Scatter(
-                x=df_outer["x"],
-                y=df_outer["y"],
-                mode="markers+text",
-                marker=dict(
-                    size=42,
-                    color="#1E293B",  # 어두운 글래스모피즘 테두리 대비 배경
-                    symbol="square",
-                    line=dict(color="rgba(255, 255, 255, 0.85)", width=2)  # 순위권 밖은 흰색 테두리
-                ),
-                text=df_outer["city_ko"],
-                textposition="middle center",
-                textfont=dict(size=10, color="#E2E8F0", family="Outfit, Noto Sans KR"),
-                hoverinfo="text",
-                hovertext=df_outer["city_ko"],
-                showlegend=False
-            ))
+            # Mapbox 대신 Geo 프로젝션을 이용해 깔끔하게 렌더링
+            fig_map.update_geos(
+                fitbounds="locations",
+                visible=False,
+                projection_type="mercator",
+                bgcolor="rgba(0,0,0,0)"
+            )
             
-            # 2. 순위권 내 (선택된 도시는 더 굵게 강조하여 드로잉)
-            df_top = df_grid[df_grid["rank"] < 99].sort_values(by="rank", ascending=False)
+            # 맵 경계선을 흰색으로 깔끔하게 처리, 선택 시 다른 지역 안 흐려지게 (opacity 유지)
+            fig_map.update_traces(
+                marker_line_color="white",
+                marker_line_width=1.5,
+                unselected=dict(marker=dict(opacity=1)),
+                selected=dict(marker=dict(opacity=1))
+            )
+            
+            # 선택된 지역 3D 팝업/강조 효과 (입체감 부여)
+            if selected_city_en:
+                sel_row = df_top[df_top['city'] == selected_city_en]
+                if not sel_row.empty:
+                    sel_color = sel_row.iloc[0]['color']
+                    sel_name = sel_row.iloc[0]['name_eng']
+                    # 1. 두꺼운 테두리로 입체감
+                    fig_map.add_choropleth(
+                        geojson=geojson_data,
+                        locations=[sel_name],
+                        featureidkey="properties.name_eng",
+                        z=[1],
+                        colorscale=[[0, sel_color], [1, sel_color]],
+                        showscale=False,
+                        marker_line_color="white",
+                        marker_line_width=3,
+                        hoverinfo="skip"
+                    )
+            
+            # Top 5 지역에 대한 꺾은선(Elbow) 어노테이션 그리기 (이미지 참고)
             for idx, row in df_top.iterrows():
-                is_selected_metric = (row["city"] == selected_city_en)
-                fig_grid.add_trace(ob.Scatter(
-                    x=[row["x"]],
-                    y=[row["y"]],
-                    mode="markers+text",
-                    marker=dict(
-                        size=55 if is_selected_metric else 47,  # 선택된 도시는 약간 더 큼
-                        color=row["color"],
-                        symbol="square",
-                        line=dict(
-                            color="#FFFFFF" if is_selected_metric else "rgba(255,255,255,0.5)", 
-                            width=3 if is_selected_metric else 1.5
-                        )
-                    ),
-                    text=[row["label"]],
-                    textposition="middle center",
-                    textfont=dict(
-                        size=10, 
-                        color="#111827" if row["color"] == "#FFD166" else "#FFFFFF", 
-                        family="Outfit, Noto Sans KR"
-                    ),
-                    hoverinfo="text",
-                    hovertext=f"{row['rank']}위 - {row['city_ko']} (관심도: {row['score']})",
-                    showlegend=False
-                ))
+                lat, lon = city_centroids.get(row['city'], (36.0, 127.5))
+                # 방향 오프셋
+                dl = 0.55 if lon > 127.5 else -0.55
+                dt = 0.4 if lat > 36.5 else -0.4
+                label_lon = lon + dl
+                label_lat = lat + dt
                 
-            fig_grid.update_layout(
+                # 상자(Box) 크기 계산
+                text_len = max(len(row['city_ko']), 5)
+                hw = 0.28 + (text_len * 0.05)
+                hh = 0.22
+                
+                # 상자 경계 좌표 (직사각형)
+                box_lats = [label_lat - hh, label_lat + hh, label_lat + hh, label_lat - hh, label_lat - hh]
+                box_lons = [label_lon - hw, label_lon - hw, label_lon + hw, label_lon + hw, label_lon - hw]
+                
+                # 그림자 박스 좌표 (우측 아래로 약간 이동)
+                shadow_lats = [l - 0.02 for l in box_lats]
+                shadow_lons = [l + 0.02 for l in box_lons]
+                
+                # 1. 지도 위 마커 점
+                fig_map.add_scattergeo(
+                    lat=[lat], lon=[lon],
+                    mode="markers",
+                    marker=dict(size=7, color="#E2E8F0", line=dict(color="#111827", width=1.5)),
+                    showlegend=False, hoverinfo="skip"
+                )
+                
+                # 2. 꺾은선 (수직 -> 수평) - 상자의 가장자리까지만 연결
+                conn_lon = label_lon - hw if dl > 0 else label_lon + hw
+                fig_map.add_scattergeo(
+                    lat=[lat, label_lat, label_lat],
+                    lon=[lon, lon, conn_lon],
+                    mode="lines",
+                    line=dict(color="#E2E8F0", width=1.5),
+                    showlegend=False, hoverinfo="skip"
+                )
+                
+                # 3. 박스 그림자
+                fig_map.add_scattergeo(
+                    lat=shadow_lats, lon=shadow_lons,
+                    mode="lines", fill="toself", fillcolor="rgba(0,0,0,0.3)",
+                    line=dict(width=0),
+                    showlegend=False, hoverinfo="skip"
+                )
+                
+                # 4. 박스 배경 (흰 바탕, 검정 테두리)
+                fig_map.add_scattergeo(
+                    lat=box_lats, lon=box_lons,
+                    mode="lines", fill="toself", fillcolor="white",
+                    line=dict(color="#111827", width=2),
+                    showlegend=False, hoverinfo="skip"
+                )
+                
+                # 5. 박스 안 텍스트 (검은 글씨, 가운데 정렬)
+                text_content = f"<span style='font-size:13px;'>{row['city_ko']}</span><br><span style='font-size:17px; font-weight:bold;'>{row['rank']}위</span>"
+                
+                fig_map.add_scattergeo(
+                    lat=[label_lat],
+                    lon=[label_lon],
+                    mode="text",
+                    text=[text_content],
+                    textposition="middle center",
+                    textfont=dict(color="#111827", family="Outfit, Noto Sans KR"),
+                    showlegend=False,
+                    hoverinfo="skip"
+                )
+            
+            fig_map.update_layout(
                 plot_bgcolor="rgba(0,0,0,0)",
                 paper_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=10, r=10, t=10, b=10),
-                height=450,
-                xaxis=dict(
-                    showgrid=False, 
-                    zeroline=False, 
-                    showticklabels=False,
-                    range=[0.4, 5.0]
-                ),
-                yaxis=dict(
-                    showgrid=False, 
-                    zeroline=False, 
-                    showticklabels=False,
-                    range=[0.0, 4.8]
-                )
+                margin=dict(l=0, r=20, t=0, b=0),
+                height=580,
+                dragmode=False, # 드래그(이동/줌)를 비활성화하여 알약 모양이 항상 완벽하게 유지되도록 함
             )
-            st.plotly_chart(fig_grid, use_container_width=True)
+            
+            # on_select 속성을 사용하여 지도 클릭 이벤트 처리 (Streamlit 1.35 이상)
+            selection = st.plotly_chart(
+                fig_map, 
+                use_container_width=True, 
+                on_select="rerun", 
+                selection_mode="points",
+                config={'scrollZoom': False, 'displayModeBar': False}
+            )
+            if selection and selection.get("selection"):
+                points = selection["selection"].get("points", [])
+                if points:
+                    clicked_customdata = points[0].get("customdata")
+                    if clicked_customdata and len(clicked_customdata) > 0:
+                        clicked_city = clicked_customdata[0]
+                        if clicked_city != st.session_state.get('selected_metric_city'):
+                            st.session_state.selected_metric_city = clicked_city
+                            st.rerun()
                 
         with col_metrics_right:
             # 매칭 순위 구하기
@@ -896,35 +937,35 @@ with tab_trends:
             rank_label = f"{int(matching_rank.iloc[0]['순위'])}위" if not matching_rank.empty else "순위권"
             
             st.markdown(f"""
-                <div style='background: rgba(22, 29, 48, 0.5); padding: 22px; border-radius: 16px; border: 1px solid rgba(0, 210, 196, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);'>
-                    <h5 style='color: #00D2C4; font-weight: 800; font-size: 1.15rem; margin-top: 0; margin-bottom: 5px;'>📍 [{selected_city_ko}] 핵심 관광 지표 ({rank_label})</h5>
-                    <p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 18px;'>현재 선택된 <b>{selected_city_ko} ({selected_city_en})</b> 지역의 외국인 관광 주요 수요 지표입니다.</p>
-                    
-                    <!-- 지표 1: 평균 관광 다양성 지수 -->
-                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #00D2C4;'>
-                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📊 평균 관광 다양성 지수</span>
-                        <h3 style='color: #00D2C4; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_avg_div:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
-                    </div>
-                    
-                    <!-- 지표 2: SNS 관광 관심도 (언급량) -->
-                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FF758F;'>
-                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📱 SNS 관광 관심도 (언급량)</span>
-                        <h3 style='color: #FF758F; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_sns_val:,.0f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>건</span></h3>
-                    </div>
-                    
-                    <!-- 지표 3: 국제적 관광 매력도 지수 -->
-                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FFD166;'>
-                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>🌍 국제적 관광 매력도 지수</span>
-                        <h3 style='color: #FFD166; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_attract_score:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
-                    </div>
-                    
-                    <!-- 지표 4: 추정 관광 소비 규모 -->
-                    <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; border-left: 4px solid #0077FF;'>
-                        <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>💳 추정 관광 소비 규모</span>
-                        <h3 style='color: #0077FF; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_consume_val/100000000:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>억원</span></h3>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+<div style='background: rgba(22, 29, 48, 0.5); padding: 22px; border-radius: 16px; border: 1px solid rgba(0, 210, 196, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);'>
+<h5 style='color: #00D2C4; font-weight: 800; font-size: 1.15rem; margin-top: 0; margin-bottom: 5px;'>📍 [{selected_city_ko}] 핵심 관광 지표 ({rank_label})</h5>
+<p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 18px;'>현재 선택된 <b>{selected_city_ko} ({selected_city_en})</b> 지역의 외국인 관광 주요 수요 지표입니다.</p>
+
+<!-- 지표 1: 평균 관광 다양성 지수 -->
+<div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #00D2C4;'>
+<span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📊 평균 관광 다양성 지수</span>
+<h3 style='color: #00D2C4; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_avg_div:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
+</div>
+
+<!-- 지표 2: SNS 관광 관심도 (언급량) -->
+<div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FF758F;'>
+<span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📱 SNS 관광 관심도 (언급량)</span>
+<h3 style='color: #FF758F; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_sns_val:,.0f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>건</span></h3>
+</div>
+
+<!-- 지표 3: 국제적 관광 매력도 지수 -->
+<div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FFD166;'>
+<span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>🌍 국제적 관광 매력도 지수</span>
+<h3 style='color: #FFD166; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_attract_score:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
+</div>
+
+<!-- 지표 4: 추정 관광 소비 규모 -->
+<div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; border-left: 4px solid #0077FF;'>
+<span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>💳 추정 관광 소비 규모</span>
+<h3 style='color: #0077FF; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_consume_val/100000000:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>억원</span></h3>
+</div>
+</div>
+""", unsafe_allow_html=True)
             
             # 선택된 도시의 세부 정보 뷰 연계
             if st.button(f"🔍 {selected_city_ko} 외국인 정밀 분석 뷰 열기", key=f"btn_open_detail_{selected_city_en}", use_container_width=True):
@@ -968,8 +1009,8 @@ with tab_trends:
         
         # Glassmorphism 스타일 카드 상자로 감싸기
         st.markdown(f"""
-            <div style='background: rgba(0, 210, 196, 0.03); border: 1px solid rgba(0, 210, 196, 0.15); padding: 25px; border-radius: 12px; margin-bottom: 20px;'>
-        """, unsafe_allow_html=True)
+<div style='background: rgba(0, 210, 196, 0.03); border: 1px solid rgba(0, 210, 196, 0.15); padding: 25px; border-radius: 12px; margin-bottom: 20px;'>
+""", unsafe_allow_html=True)
         
         col_dt_title, col_dt_close = st.columns([8.5, 1.5])
         with col_dt_title:
@@ -1345,15 +1386,15 @@ with tab1:
     # 하단 분석 통찰 (Insight Card)
     st.markdown("<br/>", unsafe_allow_html=True)
     st.markdown(f"""
-        <div style='background: rgba(0, 210, 196, 0.05); border: 1px dashed rgba(0, 210, 196, 0.2); padding: 20px; border-radius: 12px;'>
-            <h4 style='color:#00D2C4; font-weight: 700; margin-top: 0;'>💡 Antigravity 데이터 분석 인사이트</h4>
-            <p style='color: #E2E8F0; font-size: 0.95rem; line-height: 1.6; margin: 0;'>
-                현재 <b>{selected_area_name}</b> 지역은 <b>20대 및 30대 연령층</b>에서 가장 높은 관광 다양성 지수({df_diversity['touDivValue'].max()}점)를 나타내고 있습니다. 
-                SNS 언급량과 내비게이션 목적지 검색량이 조화를 이루며 유입량이 증가하고 있으나, 문화 자원 검색량에 비해 업종별 관광 소비액의 전환율을 더욱 높일 필요가 있습니다. 
-                청장년층 맞춤형 모바일 관광 마케팅과 지역 화폐 연계 소비 유도 전략을 추천합니다.
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+<div style='background: rgba(0, 210, 196, 0.05); border: 1px dashed rgba(0, 210, 196, 0.2); padding: 20px; border-radius: 12px;'>
+<h4 style='color:#00D2C4; font-weight: 700; margin-top: 0;'>💡 Antigravity 데이터 분석 인사이트</h4>
+<p style='color: #E2E8F0; font-size: 0.95rem; line-height: 1.6; margin: 0;'>
+현재 <b>{selected_area_name}</b> 지역은 <b>20대 및 30대 연령층</b>에서 가장 가장 높은 관광 다양성 지수({df_diversity['touDivValue'].max()}점)를 나타내고 있습니다. 
+SNS 언급량과 내비게이션 목적지 검색량이 조화를 이루며 유입량이 증가하고 있으나, 문화 자원 검색량에 비해 업종별 관광 소비액의 전환율을 더욱 높일 필요가 있습니다. 
+청장년층 맞춤형 모바일 관광 마케팅과 지역 화폐 연계 소비 유도 전략을 추천합니다.
+</p>
+</div>
+""", unsafe_allow_html=True)
 
 # ==========================================
 # TAB 2: 관광객 다양성 분석 (Diversity)
@@ -1592,8 +1633,8 @@ with tab5:
 # 하단 정보 푸터
 st.markdown("---")
 st.markdown(f"""
-    <div style='text-align: center; color: #64748B; font-size: 0.85rem; padding: 20px 0;'>
-        대한민국 공공데이터포털(data.go.kr) & 한국관광공사 TourAPI 실시간 연동 대시보드<br/>
-        Designed & Programmed by <b>Antigravity</b> Team. Current System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-    </div>
+<div style='text-align: center; color: #64748B; font-size: 0.85rem; padding: 20px 0;'>
+대한민국 공공데이터포털(data.go.kr) & 한국관광공사 TourAPI 실시간 연동 대시보드<br/>
+Designed & Programmed by <b>Antigravity</b> Team. Current System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+</div>
 """, unsafe_allow_html=True)
