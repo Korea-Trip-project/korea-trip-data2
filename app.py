@@ -538,88 +538,6 @@ with col_header_2:
 
 st.markdown("<br/>", unsafe_allow_html=True)
 
-# ----------------- KPI Summary Cards -----------------
-# 주요 지표를 요약하여 보여주는 카드 섹션
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-with kpi1:
-    avg_div = df_diversity['touDivValue'].mean() if 'touDivValue' in df_diversity.columns else 75.3
-    st.markdown(f"""
-        <div class="metric-card">
-            <span style="color: #94A3B8; font-size: 0.9rem; font-weight:600;">📊 평균 관광 다양성 지수</span>
-            <h2 style="color: #00D2C4; font-weight:800; font-size: 2.2rem; margin: 10px 0;">{avg_div:.1f} <span style="font-size:1.2rem;">/ 100</span></h2>
-            <p style="color: #06D6A0; font-size: 0.85rem; margin: 0;">지난달 대비 +2.4% ▲</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-with kpi2:
-    # SNS 언급량 찾기
-    sns_val = 124500
-    if not is_demo and df_resource is not None:
-        # 실시간 데이터에서 SNS 언급량 매핑
-        pass
-    else:
-        sns_row = df_resource[df_resource['demandMetric'] == 'SNS 언급량']
-        if not sns_row.empty:
-            sns_val = sns_row.iloc[0]['demandValue']
-            
-    st.markdown(f"""
-        <div class="metric-card">
-            <span style="color: #94A3B8; font-size: 0.9rem; font-weight:600;">📱 SNS 관광 관심도 (언급량)</span>
-            <h2 style="color: #FF758F; font-weight:800; font-size: 2.2rem; margin: 10px 0;">{sns_val:,.0f} <span style="font-size:1.2rem;">건</span></h2>
-            <p style="color: #06D6A0; font-size: 0.85rem; margin: 0;">전년 동월 대비 +15.8% ▲</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-with kpi3:
-    if target_audience == "외국인 관광객만 보기 (내국인 제외)":
-        # 내국인 전용인 내비게이션 데이터 대신 국제적 관광 매력도 및 다양성 점수를 노출
-        global_attractiveness_score = round(df_diversity['touDivValue'].mean() * 1.15, 1)
-        st.markdown(f"""
-            <div class="metric-card">
-                <span style="color: #94A3B8; font-size: 0.9rem; font-weight:600;">🌍 국제적 관광 매력도 지수</span>
-                <h2 style="color: #FFD166; font-weight:800; font-size: 2.2rem; margin: 10px 0;">{min(100.0, global_attractiveness_score):.1f} <span style="font-size:1.2rem;">/ 100</span></h2>
-                <p style="color: #06D6A0; font-size: 0.85rem; margin: 0;">글로벌 관심 마케팅 효율적 수준</p>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
-        # 내비게이션 목적지 검색량 찾기
-        nav_val = 345000
-        if not is_demo and df_resource is not None:
-            pass
-        else:
-            nav_row = df_resource[df_resource['demandMetric'] == '내비게이션 목적지 검색량']
-            if not nav_row.empty:
-                nav_val = nav_row.iloc[0]['demandValue']
-                
-        st.markdown(f"""
-            <div class="metric-card">
-                <span style="color: #94A3B8; font-size: 0.9rem; font-weight:600;">🚗 내비게이션 검색량 (방문 시도)</span>
-                <h2 style="color: #FFD166; font-weight:800; font-size: 2.2rem; margin: 10px 0;">{nav_val:,.0f} <span style="font-size:1.2rem;">건</span></h2>
-                <p style="color: #FF758F; font-size: 0.85rem; margin: 0;">지난주 대비 -1.2% ▼</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-with kpi4:
-    # 관광 소비액 지표
-    consume_val = 824000000
-    if not is_demo and df_resource is not None:
-        pass
-    else:
-        con_row = df_resource[df_resource['demandMetric'] == '업종별 관광 소비액']
-        if not con_row.empty:
-            consume_val = con_row.iloc[0]['demandValue']
-            
-    st.markdown(f"""
-        <div class="metric-card">
-            <span style="color: #94A3B8; font-size: 0.9rem; font-weight:600;">💳 추정 관광 소비 규모</span>
-            <h2 style="color: #0077FF; font-weight:800; font-size: 2.2rem; margin: 10px 0;">{consume_val/100000000:.1f} <span style="font-size:1.2rem;">억원</span></h2>
-            <p style="color: #06D6A0; font-size: 0.85rem; margin: 0;">지역 내 소비 활성화지수 상위 15%</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<br/>", unsafe_allow_html=True)
-
 # ----------------- 탭 구조 정의 -----------------
 tab_trends, tab1, tab2, tab3, tab5 = st.tabs([
     "📈 실시간 검색 트렌드 (구글트렌드/SNS)",
@@ -758,11 +676,16 @@ with tab_trends:
         # 최종 시각화와 출력을 위해 상위 Top 5로 슬라이싱하여 할당
         rank_data = rank_data.head(5).copy()
         
-        # 순위판 및 지도 시각화 레이아웃 구성 (좌측: 지도, 우측: 1위 지역 지표)
+        # 1위 도시 기본 지정 및 세션 상태 보증
+        top1_city_en = rank_data.iloc[0]["도시명"]
+        if 'selected_metric_city' not in st.session_state or st.session_state.selected_metric_city not in rank_data["도시명"].values:
+            st.session_state.selected_metric_city = top1_city_en
+            
+        selected_city_en = st.session_state.selected_metric_city
+        
+        # 순위판 및 지도 시각화 레이아웃 구성 (좌측: 지도 및 도시선택 단추, 우측: 선택 도시 지표)
         col_map_left, col_metrics_right = st.columns([6.5, 3.5])
         
-        # 구글 트렌드 1위 도시 기본 연동 및 지표 계산
-        top1_city_en = rank_data.iloc[0]["도시명"] # 예: "Gyeonggi"
         city_to_code = {
             "Daegu": "27", "Incheon": "28", "Gwangju": "29", "Daejeon": "30", 
             "Ulsan": "31", "Sejong": "36", "Gyeonggi": "41", "Gangwon": "42", 
@@ -776,206 +699,236 @@ with tab_trends:
             "Gyeongbuk": "경북", "Gyeongnam": "경남"
         }
         
-        top1_code = city_to_code.get(top1_city_en, "41")
-        top1_city_ko = city_to_ko_map.get(top1_city_en, top1_city_en)
+        selected_code = city_to_code.get(selected_city_en, "41")
+        selected_city_ko = city_to_ko_map.get(selected_city_en, selected_city_en)
         
-        # 1위 지역의 통계 데이터 생성
-        df_div_top1, df_res_top1 = generate_demo_data(top1_code, base_ym)
+        # 선택된 도시의 통계 데이터 생성
+        df_div_sel, df_res_sel = generate_demo_data(selected_code, base_ym)
         
         # 내국인 제외 정제 가중치 반영
-        df_res_top1 = df_res_top1[df_res_top1['demandMetric'] != '내비게이션 목적지 검색량']
-        df_res_top1['demandValue'] = df_res_top1.apply(
+        df_res_sel = df_res_sel[df_res_sel['demandMetric'] != '내비게이션 목적지 검색량']
+        df_res_sel['demandValue'] = df_res_sel.apply(
             lambda r: r['demandValue'] * 0.12 if r['demandMetric'] in ['SNS 언급량', '업종별 관광 소비액'] else r['demandValue'], axis=1
         )
-        df_div_top1['touDivValue'] = df_div_top1.apply(
+        df_div_sel['touDivValue'] = df_div_sel.apply(
             lambda r: round(r['touDivValue'] * (0.85 if r['expDivIxCd'] in ['3202', '3203'] else 0.25), 2), axis=1
         )
         
-        top1_avg_div = df_div_top1['touDivValue'].mean()
+        sel_avg_div = df_div_sel['touDivValue'].mean()
         
-        top1_sns_val = 50000
-        sns_row = df_res_top1[df_res_top1['demandMetric'] == 'SNS 언급량']
+        sel_sns_val = 50000
+        sns_row = df_res_sel[df_res_sel['demandMetric'] == 'SNS 언급량']
         if not sns_row.empty:
-            top1_sns_val = sns_row.iloc[0]['demandValue']
+            sel_sns_val = sns_row.iloc[0]['demandValue']
             
-        top1_attract_score = min(100.0, top1_avg_div * 1.15)
+        sel_attract_score = min(100.0, sel_avg_div * 1.15)
         
-        top1_consume_val = 500000000
-        con_row = df_res_top1[df_res_top1['demandMetric'] == '업종별 관광 소비액']
+        sel_consume_val = 500000000
+        con_row = df_res_sel[df_res_sel['demandMetric'] == '업종별 관광 소비액']
         if not con_row.empty:
-            top1_consume_val = con_row.iloc[0]['demandValue']
+            sel_consume_val = con_row.iloc[0]['demandValue']
             
         with col_map_left:
-            st.markdown(f"<h5 style='color:#E2E8F0; font-weight:600; text-align: center; margin-bottom: 15px;'>🗺️ '{selected_country_name}' 선호 검색 지역 지도 시각화</h5>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#94A3B8; font-size:0.92rem; font-weight:600; margin-bottom:8px;'>📍 분석할 순위권 도시를 선택하세요 (우측 지표가 연동됩니다):</p>", unsafe_allow_html=True)
             
-            # GeoJSON 파일 로드
-            geojson = load_korea_geojson()
-            if geojson:
-                city_to_geojson_name = {
-                    "Daegu": "Daegu",
-                    "Incheon": "Incheon",
-                    "Gwangju": "Gwangju",
-                    "Daejeon": "Daejeon",
-                    "Ulsan": "Ulsan",
-                    "Sejong": "Sejongsi",
-                    "Gyeonggi": "Gyeonggi-do",
-                    "Gangwon": "Gangwon-do",
-                    "Chungbuk": "Chungcheongbuk-do",
-                    "Chungnam": "Chungcheongnam-do",
-                    "Jeonbuk": "Jeollabuk-do",
-                    "Jeonnam": "Jeollanam-do",
-                    "Gyeongbuk": "Gyeongsangbuk-do",
-                    "Gyeongnam": "Gyeongsangnam-do"
-                }
+            # 가로 버튼 바 (5개 컬럼 구성)
+            col_btn_group = st.columns(5)
+            medals = ["🥇 1위", "🥈 2위", "🥉 3위", "4위", "5위"]
+            
+            for idx, row in rank_data.iterrows():
+                city_name = row["도시명"]
+                city_ko_btn = city_to_ko_map.get(city_name, city_name)
+                medal_btn = medals[idx]
+                with col_btn_group[idx]:
+                    is_active = (selected_city_en == city_name)
+                    # 선택된 버튼은 파란색 주력 단추로 활성화
+                    if st.button(f"{medal_btn} {city_ko_btn}", key=f"select_metric_{city_name}", use_container_width=True, type="primary" if is_active else "secondary"):
+                        st.session_state.selected_metric_city = city_name
+                        st.rerun()
+            
+            st.markdown("<br/>", unsafe_allow_html=True)
+            
+            # 단순화되고 귀여운 격자형 블록맵 (Tile Grid Map) 정의
+            grid_coords = {
+                "Incheon": (1.0, 4.0),
+                "Gyeonggi": (2.0, 4.0),
+                "Gangwon": (3.5, 4.0),
+                "Chungnam": (1.0, 3.0),
+                "Sejong": (2.0, 3.0),
+                "Chungkb": (3.0, 3.0),  # Chungbuk
+                "Gyeongbuk": (4.0, 3.0),
+                "Daejeon": (2.0, 2.0),
+                "Daegu": (3.2, 2.0),
+                "Ulsan": (4.2, 1.8),
+                "Jeonbuk": (1.3, 1.3),
+                "Gyeongnam": (3.2, 1.2),
+                "Gwangju": (1.0, 0.4),
+                "Jeonnam": (2.0, 0.4)
+            }
+            
+            # app.py 내의 영문 키명 보정
+            city_key_map = {
+                "Daegu": "Daegu", "Incheon": "Incheon", "Gwangju": "Gwangju", "Daejeon": "Daejeon",
+                "Ulsan": "Ulsan", "Sejong": "Sejong", "Gyeonggi": "Gyeonggi", "Gangwon": "Gangwon",
+                "Chungbuk": "Chungkb", "Chungnam": "Chungnam", "Jeonbuk": "Jeonbuk", "Jeonnam": "Jeonnam",
+                "Gyeongbuk": "Gyeongbuk", "Gyeongnam": "Gyeongnam"
+            }
+            
+            grid_data = []
+            for city_key in all_cities:
+                mapped_key = city_key_map.get(city_key, city_key)
+                x, y = grid_coords.get(mapped_key, (0.0, 0.0))
+                city_ko = city_to_ko_map.get(city_key, city_key)
                 
-                # 도시 위경도 정보 정의 (라벨 표출용)
-                city_coords = {
-                    "Daegu": (35.8714, 128.6014),
-                    "Incheon": (37.4563, 126.7052),
-                    "Gwangju": (35.1595, 126.8526),
-                    "Daejeon": (36.3504, 127.3845),
-                    "Ulsan": (35.5389, 129.3114),
-                    "Sejong": (36.4801, 127.2890),
-                    "Gyeonggi": (37.5671, 127.1902),
-                    "Gangwon": (37.8228, 128.1555),
-                    "Chungbuk": (36.8836, 127.7012),
-                    "Chungnam": (36.5184, 126.8000),
-                    "Jeonbuk": (35.7175, 127.1530),
-                    "Jeonnam": (34.8679, 126.9910),
-                    "Gyeongbuk": (36.5760, 128.7904),
-                    "Gyeongnam": (35.4606, 128.2132)
-                }
+                # Top 5 랭킹 대조
+                match_row = rank_data[rank_data["도시명"] == city_key]
+                if not match_row.empty:
+                    rank_val = int(match_row.iloc[0]["순위"])
+                    score = float(match_row.iloc[0]["검색 관심도 평균"])
+                    
+                    # 순위별 고유 비비드 원색 지정
+                    color_palette = {
+                        1: "#FF758F",  # 1위: 비비드 네온 핑크
+                        2: "#0077FF",  # 2위: 딥 블루
+                        3: "#FFD166",  # 3위: 노란색/골드
+                        4: "#06D6A0",  # 4위: 민트 그린
+                        5: "#9B5DE5"   # 5위: 퍼플
+                    }
+                    marker_color = color_palette.get(rank_val, "#00D2C4")
+                    label = f"<b>{rank_val}위</b><br/>{city_ko}"
+                    is_top = True
+                else:
+                    rank_val = 99
+                    score = 0.0
+                    marker_color = "#FFFFFF"  # 순위권 밖은 깨끗한 흰색
+                    label = f"<span style='color:#64748B;'>{city_ko}</span>"
+                    is_top = False
+                    
+                grid_data.append({
+                    "city": city_key,
+                    "city_ko": city_ko,
+                    "x": x,
+                    "y": y,
+                    "color": marker_color,
+                    "label": label,
+                    "score": score,
+                    "rank": rank_val,
+                    "is_top": is_top
+                })
                 
-                all_geojson_names = [f['properties']['name_eng'] for f in geojson['features']]
-                geojson_to_city_key = {v: k for k, v in city_to_geojson_name.items()}
-                
-                # Top 5 맵핑 데이터 생성
-                top5_map = {}
-                for idx, row in rank_data.iterrows():
-                    city_name = row["도시명"]
-                    score = row["검색 관심도 평균"]
-                    g_name = city_to_geojson_name.get(city_name)
-                    if g_name:
-                        top5_map[g_name] = {
-                            "rank": idx + 1,
-                            "score": score,
-                            "city_ko": city_to_ko_map.get(city_name, city_name)
-                        }
-                
-                # 전체 지도 데이터 생성 (Top 5는 점수 반영, 나머지는 0점 처리하여 순위권만 진하게 표시)
-                features_data = []
-                for g_name in all_geojson_names:
-                    city_key = geojson_to_city_key.get(g_name)
-                    if g_name in top5_map:
-                        rank_info = top5_map[g_name]
-                        features_data.append({
-                            "geojson_name": g_name,
-                            "score": rank_info["score"],
-                            "rank": rank_info["rank"],
-                            "label": f"{rank_info['rank']}위 - {rank_info['city_ko']}"
-                        })
-                    else:
-                        features_data.append({
-                            "geojson_name": g_name,
-                            "score": 0.0,
-                            "rank": 99,
-                            "label": ""
-                        })
-                df_map = pd.DataFrame(features_data)
-                
-                # 1) Choropleth 지도로 행정구역 색상 표현 (순위권 밖은 흰색 #FFFFFF, 순위권은 선명한 원색 #00D2C4)
-                color_scale = [
-                    [0.0, "#FFFFFF"],
-                    [0.001, "#E6F9F8"],
-                    [1.0, "#00D2C4"]
-                ]
-                
-                fig_map = px.choropleth(
-                    df_map,
-                    geojson=geojson,
-                    locations="geojson_name",
-                    featureidkey="properties.name_eng",
-                    color="score",
-                    color_continuous_scale=color_scale,
-                    template="plotly_dark",
-                    projection="mercator"
-                )
-                
-                # 2) 지도 뷰포트 확대 조정
-                fig_map.update_geos(
-                    fitbounds="locations",
-                    visible=False
-                )
-                
-                # 3) 상위 5위권 도시 위경도에 마커 및 텍스트 얹기
-                top5_lat = []
-                top5_lon = []
-                top5_labels = []
-                for idx, row in rank_data.iterrows():
-                    city_name = row["도시명"]
-                    if city_name in city_coords:
-                        lat, lon = city_coords[city_name]
-                        top5_lat.append(lat)
-                        top5_lon.append(lon)
-                        top5_labels.append(f"<b>{idx+1}위 - {city_to_ko_map.get(city_name, city_name)}</b>")
-                        
-                fig_map.add_trace(ob.Scattergeo(
-                    lat=top5_lat,
-                    lon=top5_lon,
+            df_grid = pd.DataFrame(grid_data)
+            
+            # Plotly Graph Objects를 사용해 귀여운 타일 히스토그램 블록맵 구성
+            fig_grid = ob.Figure()
+            
+            # 1. 순위권 밖 (흰색 격자 사각형으로 미니멀하게 드로잉)
+            df_outer = df_grid[df_grid["rank"] == 99]
+            fig_grid.add_trace(ob.Scatter(
+                x=df_outer["x"],
+                y=df_outer["y"],
+                mode="markers+text",
+                marker=dict(
+                    size=42,
+                    color="#1E293B",  # 어두운 글래스모피즘 테두리 대비 배경
+                    symbol="square",
+                    line=dict(color="rgba(255, 255, 255, 0.85)", width=2)  # 순위권 밖은 흰색 테두리
+                ),
+                text=df_outer["city_ko"],
+                textposition="middle center",
+                textfont=dict(size=10, color="#E2E8F0", family="Outfit, Noto Sans KR"),
+                hoverinfo="text",
+                hovertext=df_outer["city_ko"],
+                showlegend=False
+            ))
+            
+            # 2. 순위권 내 (선택된 도시는 더 굵게 강조하여 드로잉)
+            df_top = df_grid[df_grid["rank"] < 99].sort_values(by="rank", ascending=False)
+            for idx, row in df_top.iterrows():
+                is_selected_metric = (row["city"] == selected_city_en)
+                fig_grid.add_trace(ob.Scatter(
+                    x=[row["x"]],
+                    y=[row["y"]],
                     mode="markers+text",
-                    marker=dict(size=12, color="#FF758F", symbol="circle", line=dict(color="#FFFFFF", width=1.5)),
-                    text=top5_labels,
-                    textposition="top center",
-                    textfont=dict(size=11, color="#FFFFFF", family="Outfit, Noto Sans KR"),
+                    marker=dict(
+                        size=55 if is_selected_metric else 47,  # 선택된 도시는 약간 더 큼
+                        color=row["color"],
+                        symbol="square",
+                        line=dict(
+                            color="#FFFFFF" if is_selected_metric else "rgba(255,255,255,0.5)", 
+                            width=3 if is_selected_metric else 1.5
+                        )
+                    ),
+                    text=[row["label"]],
+                    textposition="middle center",
+                    textfont=dict(
+                        size=10, 
+                        color="#111827" if row["color"] == "#FFD166" else "#FFFFFF", 
+                        family="Outfit, Noto Sans KR"
+                    ),
+                    hoverinfo="text",
+                    hovertext=f"{row['rank']}위 - {row['city_ko']} (관심도: {row['score']})",
                     showlegend=False
                 ))
                 
-                fig_map.update_layout(
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    coloraxis_showscale=False,
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    height=450
+            fig_grid.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=450,
+                xaxis=dict(
+                    showgrid=False, 
+                    zeroline=False, 
+                    showticklabels=False,
+                    range=[0.4, 5.0]
+                ),
+                yaxis=dict(
+                    showgrid=False, 
+                    zeroline=False, 
+                    showticklabels=False,
+                    range=[0.0, 4.8]
                 )
-                st.plotly_chart(fig_map, use_container_width=True)
-            else:
-                st.warning("⚠️ 지도 데이터를 로드할 수 없어 시각화를 표시할 수 없습니다.")
+            )
+            st.plotly_chart(fig_grid, use_container_width=True)
                 
         with col_metrics_right:
+            # 매칭 순위 구하기
+            matching_rank = rank_data[rank_data["도시명"] == selected_city_en]
+            rank_label = f"{int(matching_rank.iloc[0]['순위'])}위" if not matching_rank.empty else "순위권"
+            
             st.markdown(f"""
                 <div style='background: rgba(22, 29, 48, 0.5); padding: 22px; border-radius: 16px; border: 1px solid rgba(0, 210, 196, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);'>
-                    <h5 style='color: #00D2C4; font-weight: 800; font-size: 1.15rem; margin-top: 0; margin-bottom: 5px;'>📍 구글 트렌드 1위 지역 핵심 지표</h5>
-                    <p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 18px;'>검색 관심도가 가장 높은 <b>{top1_city_ko} ({top1_city_en})</b>의 외국인 관광 관련 정밀 분석 데이터입니다.</p>
+                    <h5 style='color: #00D2C4; font-weight: 800; font-size: 1.15rem; margin-top: 0; margin-bottom: 5px;'>📍 [{selected_city_ko}] 핵심 관광 지표 ({rank_label})</h5>
+                    <p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 18px;'>현재 선택된 <b>{selected_city_ko} ({selected_city_en})</b> 지역의 외국인 관광 주요 수요 지표입니다.</p>
                     
                     <!-- 지표 1: 평균 관광 다양성 지수 -->
                     <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #00D2C4;'>
                         <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📊 평균 관광 다양성 지수</span>
-                        <h3 style='color: #00D2C4; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_avg_div:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
+                        <h3 style='color: #00D2C4; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_avg_div:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
                     </div>
                     
                     <!-- 지표 2: SNS 관광 관심도 (언급량) -->
                     <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FF758F;'>
                         <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>📱 SNS 관광 관심도 (언급량)</span>
-                        <h3 style='color: #FF758F; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_sns_val:,.0f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>건</span></h3>
+                        <h3 style='color: #FF758F; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_sns_val:,.0f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>건</span></h3>
                     </div>
                     
                     <!-- 지표 3: 국제적 관광 매력도 지수 -->
                     <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #FFD166;'>
                         <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>🌍 국제적 관광 매력도 지수</span>
-                        <h3 style='color: #FFD166; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_attract_score:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
+                        <h3 style='color: #FFD166; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_attract_score:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>/ 100</span></h3>
                     </div>
                     
                     <!-- 지표 4: 추정 관광 소비 규모 -->
                     <div style='background: rgba(17, 24, 39, 0.6); padding: 12px 18px; border-radius: 10px; border-left: 4px solid #0077FF;'>
                         <span style='color: #94A3B8; font-size: 0.8rem; font-weight:600;'>💳 추정 관광 소비 규모</span>
-                        <h3 style='color: #0077FF; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{top1_consume_val/100000000:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>억원</span></h3>
+                        <h3 style='color: #0077FF; font-weight:800; font-size: 1.45rem; margin: 4px 0;'>{sel_consume_val/100000000:.1f} <span style='font-size: 0.9rem; font-weight: normal; color:#64748B;'>억원</span></h3>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
             
-            # 사용자에게 1위 도시 클릭 유도 및 세부 데이터 연동
-            if st.button(f"🔍 {top1_city_ko} 외국인 정밀 분석 뷰 열기", key="btn_open_detail_top1", use_container_width=True):
-                st.session_state.detail_city = top1_city_en
+            # 선택된 도시의 세부 정보 뷰 연계
+            if st.button(f"🔍 {selected_city_ko} 외국인 정밀 분석 뷰 열기", key=f"btn_open_detail_{selected_city_en}", use_container_width=True):
+                st.session_state.detail_city = selected_city_en
                 st.rerun()
             
         st.markdown("<br/>", unsafe_allow_html=True)
