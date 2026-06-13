@@ -400,13 +400,8 @@ base_ym = f"{selected_year}{selected_month:02d}"
 selected_area_name = st.sidebar.selectbox("대상 지역 (시/도)", list(AREA_CODES.keys()), index=0)
 selected_area_code = AREA_CODES[selected_area_name]
 
-# 분석 대상 설정 (내국인 제외 여부)
-target_audience = st.sidebar.selectbox(
-    "분석 대상 설정",
-    ["전체 관광객 (내/외국인 통합)", "외국인 관광객만 보기 (내국인 제외)"],
-    index=0,
-    help="'외국인 관광객만 보기' 선택 시, 내국인 전용 지표인 내비게이션 데이터 등이 필터링되어 제외되며 국제적 지표 중심의 분석이 제공됩니다."
-)
+# 분석 대상 설정 (외국인 관광객으로 상시 고정)
+target_audience = "외국인 관광객만 보기 (내국인 제외)"
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"""
@@ -599,22 +594,21 @@ with kpi4:
 st.markdown("<br/>", unsafe_allow_html=True)
 
 # ----------------- 탭 구조 정의 -----------------
-tab_trends, tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 실시간 구글 트렌드 (Google Trends)",
+tab_trends, tab1, tab2, tab3, tab5 = st.tabs([
+    "📈 실시간 검색 트렌드 (구글트렌드/SNS)",
     "📊 종합 요약 분석 (Overview)", 
     "🌈 관광객 다양성 분석 (Diversity)", 
     "📈 관광 자원 수요 분석 (Demand)", 
-    "📱 SNS 키워드 트렌드 (SNS Trend)",
     "🗂️ 실시간 연동 데이터 (Raw Data)"
 ])
 
 # ==========================================
-# TAB 0: 실시간 구글 트렌드 (Google Trends)
+# TAB 0: 실시간 검색 트렌드 (구글트렌드/SNS)
 # ==========================================
 with tab_trends:
     # ----------------- Google Trends 분석 섹션 -----------------
     st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 25px; border-radius: 12px; border: 1px solid rgba(0, 210, 196, 0.1);'>", unsafe_allow_html=True)
-    st.markdown("<h4 style='font-size: 1.2rem; color: #00D2C4; font-weight: 700; margin-bottom: 10px;'>📈 실시간 Google Trends 검색 트렌드 분석</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='font-size: 1.2rem; color: #00D2C4; font-weight: 700; margin-bottom: 10px;'>📊 실시간 구글 트렌트(Google Trends)분석</h4>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 0.9rem;'>전세계 및 해외 각국에서 한국 관광 관련하여 주요 도시들을 어떻게 검색하는지 랭킹을 추적합니다.</p>", unsafe_allow_html=True)
     st.markdown("<p style='color: #FFB300; font-size: 0.85rem; font-weight: 600; margin-top: -10px; margin-bottom: 15px;'>💡 안내: 순수 해외 외국인의 관점을 정밀 분석하기 위해 대한민국(KR) 및 대도시(서울, 부산)는 분석 대상에서 제외하였으며, 전세계 15개 이상의 주요 해외 인바운드 국가 필터를 제공합니다.</p>", unsafe_allow_html=True)
     
@@ -789,8 +783,93 @@ with tab_trends:
         st.warning("⚠️ 구글 트렌드 데이터를 조회할 수 없습니다.")
         
     st.markdown("</div>", unsafe_allow_html=True)
-
-# ----------------- 탭 구조 정의 -----------------
+    
+    # ----------------- SNS 키워드 분석 섹션 병합 -----------------
+    st.markdown("<br/><hr/><br/>", unsafe_allow_html=True)
+    st.markdown("<h3 style='font-weight: 600; color: #F8FAFC;'>📱 SNS 관광 관심도 키워드별 분석</h3>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94A3B8;'>SNS 언급량 지표를 기반으로 관광 카테고리 및 세부 키워드별 실시간 관심도 분포를 분석합니다.</p>", unsafe_allow_html=True)
+    
+    # SNS 총합 값 추출
+    sns_total = 124500
+    sns_row = df_resource[df_resource['demandMetric'] == 'SNS 언급량']
+    if not sns_row.empty:
+        sns_total = sns_row.iloc[0]['demandValue']
+        
+    df_sns_kw = get_sns_keyword_data(sns_total, selected_area_code)
+    
+    # 2열 구성
+    col_sns1, col_sns2 = st.columns([4, 6])
+    
+    with col_sns1:
+        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
+        st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>🔍 카테고리 필터 및 순위</h4>", unsafe_allow_html=True)
+        
+        # 카테고리 선택 필터
+        categories_list = list(df_sns_kw['category'].unique())
+        selected_cat = st.selectbox("관광 분야 카테고리 선택", categories_list, index=0)
+        
+        # 선택된 카테고리의 키워드 순위표
+        df_sns_cat_filtered = df_sns_kw[df_sns_kw['category'] == selected_cat].sort_values(by="value", ascending=False)
+        
+        st.dataframe(
+            df_sns_cat_filtered[['keyword', 'value']],
+            column_config={
+                "keyword": "연관 관심 키워드",
+                "value": "SNS 언급 횟수 (건)"
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    with col_sns2:
+        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
+        st.markdown(f"<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>📊 '{selected_cat}' 분야 세부 키워드 비율 (Treemap)</h4>", unsafe_allow_html=True)
+        
+        # 트리맵 시각화
+        fig_tree = px.treemap(
+            df_sns_cat_filtered,
+            path=['keyword'],
+            values='value',
+            color='value',
+            color_continuous_scale='Teal',
+            template='plotly_dark'
+        )
+        fig_tree.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=280,
+            coloraxis_showscale=False
+        )
+        st.plotly_chart(fig_tree, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    # 하단 전체 키워드 종합 분포 바 차트
+    st.markdown("<br/>", unsafe_allow_html=True)
+    st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
+    st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>🌐 관광 키워드 관심도 종합 분포</h4>", unsafe_allow_html=True)
+    
+    fig_sns_all = px.bar(
+        df_sns_kw.sort_values(by="value", ascending=True),
+        y="keyword",
+        x="value",
+        color="category",
+        color_discrete_sequence=px.colors.qualitative.Pastel,
+        labels={"keyword": "키워드", "value": "SNS 언급량 (건)", "category": "카테고리"},
+        template="plotly_dark",
+        height=450
+    )
+    fig_sns_all.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=20, r=20, t=20, b=20),
+        xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)"),
+        yaxis=dict(showgrid=False),
+        legend=dict(font=dict(color="#94A3B8"), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    st.plotly_chart(fig_sns_all, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # TAB 1: 종합 요약 분석 (Overview)
@@ -1003,94 +1082,7 @@ with tab3:
         st.plotly_chart(fig_res_bar, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ==========================================
-# TAB 4: SNS 키워드 트렌드 (SNS Trend)
-# ==========================================
-with tab4:
-    st.markdown("<h3 style='font-weight: 600; color: #F8FAFC;'>📱 SNS 관광 관심도 키워드별 분석</h3>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94A3B8;'>SNS 언급량 지표를 기반으로 관광 카테고리 및 세부 키워드별 실시간 관심도 분포를 분석합니다.</p>", unsafe_allow_html=True)
-    
-    # SNS 총합 값 추출
-    sns_total = 124500
-    sns_row = df_resource[df_resource['demandMetric'] == 'SNS 언급량']
-    if not sns_row.empty:
-        sns_total = sns_row.iloc[0]['demandValue']
-        
-    df_sns_kw = get_sns_keyword_data(sns_total, selected_area_code)
-    
-    # 2열 구성
-    col_sns1, col_sns2 = st.columns([4, 6])
-    
-    with col_sns1:
-        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
-        st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>🔍 카테고리 필터 및 순위</h4>", unsafe_allow_html=True)
-        
-        # 카테고리 선택 필터
-        categories_list = list(df_sns_kw['category'].unique())
-        selected_cat = st.selectbox("관광 분야 카테고리 선택", categories_list, index=0)
-        
-        # 선택된 카테고리의 키워드 순위표
-        df_sns_cat_filtered = df_sns_kw[df_sns_kw['category'] == selected_cat].sort_values(by="value", ascending=False)
-        
-        st.dataframe(
-            df_sns_cat_filtered[['keyword', 'value']],
-            column_config={
-                "keyword": "연관 관심 키워드",
-                "value": "SNS 언급 횟수 (건)"
-            },
-            use_container_width=True,
-            hide_index=True
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    with col_sns2:
-        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
-        st.markdown(f"<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>📊 '{selected_cat}' 분야 세부 키워드 비율 (Treemap)</h4>", unsafe_allow_html=True)
-        
-        # 트리맵 시각화
-        fig_tree = px.treemap(
-            df_sns_cat_filtered,
-            path=['keyword'],
-            values='value',
-            color='value',
-            color_continuous_scale='Teal',
-            template='plotly_dark'
-        )
-        fig_tree.update_layout(
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=10, r=10, t=10, b=10),
-            height=280,
-            coloraxis_showscale=False
-        )
-        st.plotly_chart(fig_tree, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    # 하단 전체 키워드 종합 분포 바 차트
-    st.markdown("<br/>", unsafe_allow_html=True)
-    st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
-    st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>🌐 관광 키워드 관심도 종합 분포</h4>", unsafe_allow_html=True)
-    
-    fig_sns_all = px.bar(
-        df_sns_kw.sort_values(by="value", ascending=True),
-        y="keyword",
-        x="value",
-        color="category",
-        color_discrete_sequence=px.colors.qualitative.Pastel,
-        labels={"keyword": "키워드", "value": "SNS 언급량 (건)", "category": "카테고리"},
-        template="plotly_dark",
-        height=450
-    )
-    fig_sns_all.update_layout(
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=20, r=20, t=20, b=20),
-        xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)"),
-        yaxis=dict(showgrid=False),
-        legend=dict(font=dict(color="#94A3B8"), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-    )
-    st.plotly_chart(fig_sns_all, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+
     
 
 
