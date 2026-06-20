@@ -16,41 +16,72 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+st.markdown('<div class="sticky-bg"></div>', unsafe_allow_html=True)
+
+
+from datetime import datetime
+
+
+
+# ----------------- JS Injection for UI Fixes -----------------
+import streamlit.components.v1 as components
+components.html("""
+<script>
+    const doc = window.parent.document;
+    const centerSelect = () => {
+        doc.querySelectorAll('div[data-testid="stSelectbox"]').forEach(sb => {
+            const spans = sb.querySelectorAll('span, p, div');
+            spans.forEach(span => {
+                if(span.innerText && (span.innerText.includes('최근') || span.innerText.includes('today'))) {
+                    span.style.textAlign = 'center';
+                    span.style.display = 'block';
+                    span.style.width = '100%';
+                    span.style.margin = '0 auto';
+                    if (span.parentElement) {
+                        span.parentElement.style.display = 'flex';
+                        span.parentElement.style.justifyContent = 'center';
+                    }
+                }
+            });
+        });
+    };
+    setInterval(centerSelect, 500);
+</script>
+""", height=0, width=0)
+
+
 # Custom CSS를 활용한 Glassmorphism 및 프리미엄 다크 모드 디자인 스타일링
 st.markdown("""
-    <style>
-        /* 글로벌 폰트 및 스타일 */
+    <div id="top"></div>
+<style>
+        /* 글로벌 폰트 및 기본 여백 */
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700&display=swap');
-        
-        html, body, [class*="css"] {
+        html, body {
             font-family: 'Outfit', 'Noto Sans KR', sans-serif;
         }
-        
-        /* 메인 배경 그라데이션 */
+        /* 메인 백그라운드 */
         .main {
-            background: linear-gradient(135deg, #0B0F19 0%, #111827 100%);
+            background: #0F172A;
         }
-        
         /* 대시보드 카드 스타일 */
         .metric-card {
-            background: rgba(22, 29, 48, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: #1E293B;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 16px;
             padding: 24px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
             transition: all 0.3s ease;
         }
         .metric-card:hover {
             transform: translateY(-4px);
-            border-color: rgba(0, 210, 196, 0.3);
-            box-shadow: 0 12px 40px 0 rgba(0, 210, 196, 0.1);
+            border-color: rgba(96, 165, 250, 0.5);
+            box-shadow: 0 8px 25px 0 rgba(96, 165, 250, 0.15);
         }
-        
-        /* 그라데이션 텍스트 타이틀 */
+        /* 텍스트 타이틀 */
         .gradient-title {
-            background: linear-gradient(90deg, #00D2C4 0%, #0077FF 100%);
+            background: linear-gradient(90deg, #3B82F6 0%, #3B82F6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 800;
@@ -58,26 +89,107 @@ st.markdown("""
             margin-bottom: 0.5rem;
             letter-spacing: -0.05rem;
         }
-        
-        /* 배지 스타일 */
+        /* 뱃지 스타일 */
         .badge {
-            background-color: rgba(0, 210, 196, 0.1);
-            color: #00D2C4;
+            background-color: rgba(96, 165, 250, 0.15);
+            color: #60A5FA;
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
-            border: 1px solid rgba(0, 210, 196, 0.2);
+            border: 1px solid rgba(96, 165, 250, 0.3);
             display: inline-block;
         }
-        
-        /* 서브텍스트 */
         .sub-text {
             color: #94A3B8;
             font-size: 1.05rem;
             margin-bottom: 2rem;
         }
-    </style>
+/* ========================================================= */
+/* --- TAB MENU HOVER EFFECT ---                             */
+/* ========================================================= */
+div[data-testid="stTabs"] button[role="tab"]:not([aria-selected="true"]):hover {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+    border-radius: 8px 8px 0 0 !important;
+}
+div[data-testid="stTabs"] button[role="tab"]:not([aria-selected="true"]):hover p {
+    color: #000000 !important;
+    font-weight: 500 !important;
+}
+/* ========================================================= */
+/* --- RADIO BUTTON STYLING (Segmented Control) ---          */
+/* ========================================================= */
+div[data-testid="stRadio"] > div[role="radiogroup"] {
+    display: inline-flex;
+    gap: 4px;
+}
+div[data-testid="stRadio"] label[data-baseweb="radio"],
+div[data-testid="stRadio"] label {
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+}
+div[data-testid="stRadio"] div[data-baseweb="radio"] > div:first-child,
+div[data-testid="stRadio"] label > div:first-child {
+    display: none !important;
+}
+/* Selected state: match hover */
+div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked),
+div[data-testid="stRadio"] label:has(input:checked) {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+}
+div[data-testid="stRadio"] label[data-baseweb="radio"]:has(input:checked) p,
+div[data-testid="stRadio"] label:has(input:checked) p {
+    color: #000000 !important;
+    font-weight: 500 !important;
+}
+/* ========================================================= */
+/* --- SELECTBOX TEXT CENTER ---                             */
+/* ========================================================= */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+    position: relative !important;
+}
+div[data-testid="stSelectbox"] div[class*="-singleValue"],
+div[data-testid="stSelectbox"] div[class*="singleValue"] {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: auto !important;
+    text-align: center !important;
+}
+/* ========================================================= */
+/* --- FLOATING TOP BUTTON ---                               */
+/* ========================================================= */
+.top-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background-color: #3B82F6;
+    color: white !important;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none !important;
+    font-weight: bold;
+    font-size: 24px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    z-index: 999999;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255,255,255,0.2);
+}
+.top-btn:hover {
+    background-color: #2563EB;
+    transform: scale(1.1) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+/* Ensure appviewmain is scrollable natively */
+.stAppViewMain {
+    overflow-y: auto !important;
+}
+</style>
 """, unsafe_allow_html=True)
 
 # 지역 코드 매핑 정보 (시도명 -> 공공데이터 지역코드)
@@ -103,6 +215,28 @@ AREA_CODES = {
 
 # 역방향 매핑 (코드 -> 시도명)
 CODE_TO_AREA = {v: k for k, v in AREA_CODES.items()}
+
+# 대표 기초 지자체(시군구) 매핑 (연관 관광지 API 필수 파라미터 보완)
+REPRESENTATIVE_SIGNGU = {
+    "11": "11110", # 서울 종로구
+    "26": "26110", # 부산 중구
+    "27": "27110", # 대구 중구
+    "28": "28110", # 인천 중구
+    "29": "29110", # 광주 동구
+    "30": "30110", # 대전 동구
+    "31": "31110", # 울산 중구
+    "36": "36110", # 세종
+    "41": "41110", # 경기 수원장안구
+    "42": "42110", # 강원 춘천시
+    "43": "43110", # 충북 청주시
+    "44": "44130", # 충남 천안시
+    "45": "45110", # 전북 전주시
+    "46": "46110", # 전남 목포시
+    "47": "47110", # 경북 포항시
+    "48": "48120", # 경남 창원시
+    "50": "50110"  # 제주 제주시
+}
+
 
 # 대한민국 행정구역 GeoJSON 데이터 로드 함수 (속도 개선 및 오프라인 보완을 위해 로컬 파일 캐싱 적용)
 @st.cache_data(show_spinner=False)
@@ -377,92 +511,163 @@ if 'detail_city' not in st.session_state:
 # ==========================================
 header_container = st.container()
 
-ctrl_panel_container = st.container()
+# ----------------- 사이드바 설정 (분석 조건 및 메뉴) -----------------
+with st.sidebar:
+    st.markdown("### 📌 메뉴 선택")
+    menu = st.radio(
+        "이동할 페이지를 선택하세요:", 
+        ["기존 대시보드", "app", "Foreigner Trend", "Tourism Diversity", "Demand Analysis"],
+        label_visibility="collapsed"
+    )
+    st.markdown("---")
+    st.markdown("### ⚙️ 분석 조건 설정")
+    selected_year = st.selectbox("조회 연도", [2025, 2026], index=1)
+    selected_month = st.selectbox("조회 월", list(range(1, 13)), index=5)
+    base_ym = f"{selected_year}{selected_month:02d}"
+    selected_area_name = st.selectbox("대상 지역", list(AREA_CODES.keys()), index=0)
+    selected_area_code = AREA_CODES[selected_area_name]
+    target_audience = "외국인 관광객만 보기 (내국인 제외)"
 
-with ctrl_panel_container:
-    st.markdown("""<div id='sticky-ctrl-panel'></div>
+# ----------------- 상단 커스텀 헤더 및 모드 버튼 -----------------
+st.markdown("""
 <style>
+/* 헤더 숨기기 및 여백 조정 */
 header[data-testid="stHeader"] { display: none; }
 .block-container { padding-top: 1rem !important; }
-div:not(section.main):not([data-testid="stAppViewContainer"]):has(#sticky-ctrl-panel) { overflow: visible !important; }
-div:not(section.main):not([data-testid="stAppViewContainer"]):has(div[role="tablist"]) { overflow: visible !important; }
-.block-container div[data-testid="stVerticalBlock"] > div:has(#sticky-ctrl-panel) {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 9999 !important;
-    background: rgba(15, 23, 42, 0.95) !important;
-    backdrop-filter: blur(10px) !important;
-    border-bottom: 1px solid rgba(0, 210, 196, 0.3) !important;
-    border-radius: 0 0 12px 12px !important;
-    padding: 10px 15px !important;
-    margin-top: -1.5rem !important;
-    margin-bottom: 15px !important;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+/* KOREA TOURISM BIG DATA 타이틀 (이미지와 유사한 청록색 폰트) */
+.custom-main-title {
+    color: #FFFFFF;
+    font-size: 2.1rem;
+    font-weight: 800;
+    font-family: 'Arial Black', Impact, 'Segoe UI', sans-serif;
+    letter-spacing: -0.5px;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    line-height: 1.2;
 }
-.block-container div[data-testid="stVerticalBlock"] > div:has(#sticky-ctrl-panel) label {
-    font-size: 0.75rem !important;
-    min-height: 0px !important;
-    padding-bottom: 2px !important;
-    margin-bottom: 0px !important;
-    color: #00D2C4 !important;
-    font-weight: 600 !important;
+/* 상단 우측 라디오 버튼을 가로 버튼 2개처럼 보이게 하는 CSS */
+div[data-testid="stRadio"] > div {
+    display: flex;
+    flex-direction: row;
+    gap: 0px;
+    background-color: #1E293B;
+    border-radius: 4px;
+    padding: 3px;
+    border: 1px solid #334155;
+    justify-content: flex-end;
 }
-.block-container div[data-testid="stVerticalBlock"] > div:has(#sticky-ctrl-panel) div[data-baseweb="select"] > div,
-.block-container div[data-testid="stVerticalBlock"] > div:has(#sticky-ctrl-panel) input {
-    min-height: 30px !important;
-    height: 30px !important;
-    font-size: 0.8rem !important;
-    padding: 0px 8px !important;
+div[data-testid="stRadio"] > div > label {
+    margin-right: 0 !important;
+    padding: 5px 10px !important;
+    border-radius: 4px;
+    cursor: pointer;
 }
-.block-container div[data-testid="stVerticalBlock"] > div:has(#sticky-ctrl-panel) div[data-testid="column"] {
-    padding: 0 5px !important;
+div[data-testid="stRadio"] > div > label:hover {
+    background-color: #e2e8f0;
 }
-div[data-testid="stTabs"] { overflow: visible !important; }
-div[data-testid="stTabs"] > div { overflow: visible !important; }
+div[data-testid="stRadio"] > div > label[data-checked="true"] {
+    background-color: #334155 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+div[data-testid="stRadio"] > div > label > div:first-child {
+    display: none; /* 동그란 라디오 아이콘 숨기기 */
+}
+div[data-testid="stRadio"] > div > label p {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #94A3B8;
+    margin: 0;
+}
+div[data-testid="stRadio"] > div > label[data-checked="true"] p {
+    color: #60A5FA;
+}
+/* 💡 물리적 폴더 형태(사다리꼴) 탭 디자인 적용 및 상단 고정(Sticky) */
+/* 전체 배경색 연한 회색 지정 */
+.stApp {
+    background-color: #0F172A !important;
+}
+/* 탭 메뉴 상단 고정 (Sticky) */
+/* Make only the tab list sticky, not the whole panel container */
+div[data-testid="stTabs"] > div[data-baseweb="tab-list"],
+div[data-testid="stTabs"] > div[role="tablist"] {
+    /* position: sticky removed */
+    top: 40px !important;
+    z-index: 999 !important;
+    background-color: #0F172A !important;
+    padding-top: 10px !important;
+    margin-bottom: 0 !important;
+    border-bottom: 3px solid #60A5FA !important;
+}
+div[data-testid="stTabs"] {
+    /* removing old sticky wrapper css */
+}
+/* 1. 탭 리스트 컨테이너 (하단 두꺼운 선 추가 및 여백 최소화) */
+div[data-testid="stTabs"] div[data-baseweb="tab-list"],
 div[data-testid="stTabs"] div[role="tablist"] {
-    position: sticky !important;
-    top: 55px !important;
-    z-index: 998 !important;
-    background: rgba(11, 15, 25, 0.95) !important;
-    backdrop-filter: blur(10px) !important;
-    padding: 10px 0 5px 0 !important;
-    margin-bottom: 15px !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-bottom: 3px solid #60A5FA !important; 
+    gap: 0 !important;
+    margin-bottom: 0px !important;
+    padding-bottom: 0px !important;
 }
-</style>""", unsafe_allow_html=True)
-    
-    col_ctrl1, col_ctrl2, col_ctrl3, col_ctrl4, col_ctrl5 = st.columns([1.2, 1.2, 0.8, 0.8, 1.2])
-    
-    with col_ctrl1:
-        data_mode = st.selectbox("연동 모드", ["데모 모드 (추천)", "실시간 OpenAPI 연동"], index=0)
-        service_key = ""
-        
-    with col_ctrl2:
-        if data_mode == "실시간 OpenAPI 연동":
-            service_key = st.text_input("서비스키 (Decoding Key)", type="password", placeholder="키 입력")
-            
-    with col_ctrl3:
-        selected_year = st.selectbox("조회 연도", [2025, 2026], index=1)
-        
-    with col_ctrl4:
-        selected_month = st.selectbox("조회 월", list(range(1, 13)), index=5)
-        base_ym = f"{selected_year}{selected_month:02d}"
-        
-    with col_ctrl5:
-        selected_area_name = st.selectbox("대상 지역", list(AREA_CODES.keys()), index=0)
-        selected_area_code = AREA_CODES[selected_area_name]
-        target_audience = "외국인 관광객만 보기 (내국인 제외)"
+/* 2. 개별 탭 버튼 디자인 (사다리꼴 형태 및 비활성 배경) */
+div[data-testid="stTabs"] button[data-baseweb="tab"],
+div[data-testid="stTabs"] button[role="tab"] {
+    background-color: #1E293B !important;
+    border: none !important;
+    color: #94A3B8 !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    padding: 10px 25px 10px 25px !important;
+    margin-right: -10px !important; /* 탭이 물리적으로 이어져 보이도록 살짝 겹침 */
+    border-radius: 0 !important;
+    clip-path: polygon(15px 0, calc(100% - 15px) 0, 100% 100%, 0 100%) !important;
+    transition: all 0.2s ease;
+}
+div[data-testid="stTabs"] button[data-baseweb="tab"]:hover,
+div[data-testid="stTabs"] button[role="tab"]:hover {
+    background-color: #FFFFFF !important;
+    color: #FFFFFF !important;
+}
+/* 3. 활성 탭 디자인 (청록색 배경 및 흰색 글씨, 가장 위로 올라오게) */
+div[data-testid="stTabs"] button[data-baseweb="tab"][aria-selected="true"],
+div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    background-color: #60A5FA !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    z-index: 2 !important;
+    position: relative;
+    border-bottom: none !important;
+}
+/* 4. 브라우저 네이티브 가로 스크롤바 숨김 처리 */
+div[data-testid="stTabs"] div[data-baseweb="tab-list"] {
+    /* overflow-x: hidden removed */
+    /* overflow-y: hidden removed */
+    scrollbar-width: none !important; /* Firefox */
+    -ms-overflow-style: none !important; /* IE and Edge */
+}
+div[data-testid="stTabs"] div[data-baseweb="tab-list"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 with header_container:
-    col_header_1, col_header_2 = st.columns([8, 2])
-    with col_header_1:
-        st.markdown('<div class="gradient-title">KOREA TOURISM BIG DATA</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="sub-text">대한민국 지역별 관광 빅데이터 분석 대시보드 — <b>{selected_area_name} ({base_ym[:4]}년 {base_ym[4:]}월 기준)</b></div>', unsafe_allow_html=True)
-    with col_header_2:
-        if data_mode == "데모 모드 (추천)" or not service_key:
-            st.markdown('<div style="text-align: right; margin-top: 20px;"><span class="badge" style="background-color: rgba(255, 179, 0, 0.1); color: #FFB300; border-color: rgba(255, 179, 0, 0.2);">📴 DEMO DATA MODE</span></div>', unsafe_allow_html=True)
-        else:
-            st.markdown('<div style="text-align: right; margin-top: 20px;"><span class="badge">🌐 REAL-TIME API MODE</span></div>', unsafe_allow_html=True)
+    col_t1, col_t2 = st.columns([7, 3])
+    with col_t1:
+        st.markdown('<div class="custom-main-title">KOREA TOURISM BIG DATA</div>', unsafe_allow_html=True)
+    with col_t2:
+        ui_mode = st.radio("모드", ["연동 모드", "데모 모드(추천)"], horizontal=True, label_visibility="collapsed", index=1)
+        data_mode = "실시간 OpenAPI 연동" if ui_mode == "연동 모드" else "데모 모드 (추천)"
+        service_key = ""
+
+    # 연동 모드일 경우 서비스키 입력칸을 사이드바 하단에 추가
+    if data_mode == "실시간 OpenAPI 연동":
+        with st.sidebar:
+            st.markdown("---")
+            service_key = st.text_input("🔑 OpenAPI 서비스키", type="password", placeholder="Decoding Key 입력")
+
 
 # ==========================================
 # 4. 데이터 로드 및 연동 파트
@@ -630,6 +835,206 @@ default_weights = {
     "Daejeon": 0.09, "Gwangju": 0.07, "Ulsan": 0.07, "Chungbuk": 0.05, "Sejong": 0.02
 }
 
+# (사이드바 메뉴는 상단으로 이동됨)
+
+if menu != "기존 대시보드":
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    if menu == "app":
+        st.markdown('<div class="gradient-title">방한 외래객 유입 현황 요약</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sub-text">기준: {selected_year}년 {selected_month}월</div>', unsafe_allow_html=True)
+        
+        # --- 1. 방문자 수 (metcoRegnVisitrDDList) 연동 로직 ---
+        total_visitors = random.randint(700000, 950000) # Fallback 기본값
+        
+        if data_mode == "실시간 OpenAPI 연동" and service_key:
+            start_date = f"{selected_year}{selected_month:02d}01"
+            end_date = f"{selected_year}{selected_month:02d}01" # 1일 데이터로 월 데이터 추정 (속도 최적화)
+            url_visitor = "https://apis.data.go.kr/B551011/DataLabService/metcoRegnVisitrDDList"
+            v_params = {'MobileOS': 'ETC', 'MobileApp': 'TourismApp', 'startYmd': start_date, 'endYmd': end_date}
+            
+            with st.spinner("🚀 실시간 방문자 수 API 연동 중..."):
+                df_visit = fetch_gokr_data(url_visitor, service_key, extra_params=v_params)
+                if df_visit is not None and not df_visit.empty:
+                    df_visit['areaCode'] = df_visit['areaCode'].astype(str)
+                    target_data = df_visit[df_visit['areaCode'] == selected_area_code]
+                    if not target_data.empty:
+                        # 외국인 방문자 (touDivCd='3') 필터링 (없으면 전체)
+                        f_data = target_data[target_data['touDivCd'] == '3']
+                        if not f_data.empty:
+                            daily_visitors = pd.to_numeric(f_data['touNum'], errors='coerce').sum()
+                        else:
+                            daily_visitors = pd.to_numeric(target_data['touNum'], errors='coerce').sum()
+                        
+                        total_visitors = int(daily_visitors * 30) # 월 단위 환산
+                        st.toast("✅ 방문자 수 실시간 OpenAPI 연동 성공!")
+
+        disp_visitors = f"{int(total_visitors):,} 명"
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <p style="color: #94A3B8; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px;">{selected_year}년 방한 외래객 총수</p>
+                <h2 style="color: #60A5FA; margin-top: 0; font-size: 2.2rem; font-weight: 800;">{disp_visitors}</h2>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <p style="color: #94A3B8; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px;">핵심 입국 목적</p>
+                <h2 style="color: #60A5FA; margin-top: 0; font-size: 2.2rem; font-weight: 800;">관광</h2>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <p style="color: #94A3B8; font-size: 0.9rem; font-weight: 600; margin-bottom: 5px;">주요 방문 연령층</p>
+                <h2 style="color: #60A5FA; margin-top: 0; font-size: 2.2rem; font-weight: 800;">20대</h2>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("### 📈 월별 외래 관광객 유입 추이")
+        view_year = st.selectbox("차트 조회 연도 선택", [2024, 2025, 2026], index=[2024, 2025, 2026].index(selected_year))
+        months = [f"{m}월" for m in range(1, 13)]
+        visitors = [int(total_visitors * random.uniform(0.8, 1.2)) for _ in range(12)]
+        df_monthly = pd.DataFrame({'month': months, 'touNum': visitors})
+        fig_line = px.line(df_monthly, x='month', y='touNum', markers=True, template="plotly_white", color_discrete_sequence=["#3B82F6"])
+        fig_line.update_layout(xaxis_title="월", yaxis_title="관광객 수 (명)", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=20, r=20, t=20, b=20))
+        fig_line.update_traces(line=dict(width=3), marker=dict(size=8, color="#3B82F6"))
+        st.plotly_chart(fig_line, use_container_width=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("### 🗺️ 전국 지역별 관광 관심도 및 방문도 현황")
+        st.markdown("<p style='color: #94A3B8; font-size: 0.9rem;'>※ 제외 지역: 서울특별시, 부산광역시, 제주특별자치도</p>", unsafe_allow_html=True)
+        excluded_areas = ["11", "26", "50"]
+        regional_data = []
+        for area_name, area_code in AREA_CODES.items():
+            if area_code in excluded_areas: continue
+            df_div_mock, df_res_mock = generate_demo_data(area_code, base_ym)
+            sns_val = df_res_mock[df_res_mock['demandMetric'] == 'SNS 언급량']['demandValue'].values[0] if not df_res_mock.empty else 0
+            vis_val = sns_val * random.uniform(1.5, 3.5)
+            regional_data.append({"지역명": area_name, "관심도(SNS)": sns_val, "방문도": vis_val})
+        df_regional = pd.DataFrame(regional_data)
+        fig_scatter = px.scatter(df_regional, x="관심도(SNS)", y="방문도", text="지역명", size="방문도", color="관심도(SNS)", color_continuous_scale="Teal", template="plotly_white", size_max=40)
+        fig_scatter.update_traces(textposition='top center')
+        fig_scatter.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=20, r=20, t=20, b=20), coloraxis_showscale=False)
+        st.plotly_chart(fig_scatter, use_container_width=True)
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("### 💳 전국 관광 소비 업종별 비중")
+        st.markdown("<p style='color: #94A3B8; font-size: 0.9rem;'>※ 제외 지역: 서울특별시, 부산광역시, 제주특별자치도</p>", unsafe_allow_html=True)
+        consume_data = []
+        for area_name, area_code in AREA_CODES.items():
+            if area_code in excluded_areas: continue
+            df_div_mock, df_res_mock = generate_demo_data(area_code, base_ym)
+            con_val = df_res_mock[df_res_mock['demandMetric'] == '업종별 관광 소비액']['demandValue'].values[0] if not df_res_mock.empty else 0
+            consume_data.append({"지역명": area_name, "소비액": con_val})
+        df_consume = pd.DataFrame(consume_data)
+        fig_bar = px.bar(df_consume.sort_values(by="소비액", ascending=False), x="지역명", y="소비액", color="소비액", color_continuous_scale="Blues", template="plotly_white")
+        fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=20, r=20, t=20, b=20), coloraxis_showscale=False)
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+    elif menu == "Foreigner Trend":
+        st.markdown('<div class="gradient-title">방한 외래관광객 트렌드 분석</div>', unsafe_allow_html=True)
+        st.markdown("<p class='sub-text'>외국인 관광객의 국가별 방문 성향 및 연령/성별 분포 트렌드를 분석합니다.</p>", unsafe_allow_html=True)
+        st.markdown("### 🌐 주요 국가별 방한 비율")
+        national_shares = {"일본 (JP)": 28.0, "미국 (US)": 20.0, "대만 (TW)": 18.0, "동남아 (SEA)": 16.0, "중국 (CN)": 12.0, "유럽/기타": 6.0}
+        df_national = pd.DataFrame(list(national_shares.items()), columns=["국적", "유입 비중 (%)"])
+        fig_bar = px.bar(df_national, x="유입 비중 (%)", y="국적", orientation="h", color="국적", color_discrete_sequence=px.colors.qualitative.Pastel, template="plotly_white", text="유입 비중 (%)")
+        fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=10, r=40, t=10, b=10), height=300, showlegend=False, xaxis=dict(showgrid=False, visible=False), yaxis=dict(title="", categoryorder="total ascending"))
+        fig_bar.update_traces(texttemplate='%{text}%', textposition='outside')
+        st.plotly_chart(fig_bar, use_container_width=True)
+        st.markdown("---")
+        st.markdown("### ⚧️ 연령 및 성별 다양성 분석")
+        age_ranges = ["10대", "20대", "30대", "40대", "50대", "60대 이상"]
+        age_shares = [9.0, 35.0, 29.0, 15.0, 9.0, 3.0]
+        male_pct = 45.0
+        female_pct = 55.0
+        age_gender_data = []
+        for i, age_group in enumerate(age_ranges):
+            age_ratio = age_shares[i]
+            male_ratio = age_ratio * (male_pct / 100.0)
+            female_ratio = age_ratio * (female_pct / 100.0)
+            age_gender_data.append({"연령대": age_group, "성별": "남성", "비율 (%)": round(male_ratio, 1)})
+            age_gender_data.append({"연령대": age_group, "성별": "여성", "비율 (%)": round(female_ratio, 1)})
+        df_age_gender = pd.DataFrame(age_gender_data)
+        fig_age_gender = px.bar(df_age_gender, x="연령대", y="비율 (%)", color="성별", color_discrete_map={"남성": "#7FB5FF", "여성": "#FFAAA6"}, barmode="stack", template="plotly_white", text="비율 (%)")
+        fig_age_gender.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=0, r=0, t=20, b=10), height=300, xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, visible=False))
+        st.plotly_chart(fig_age_gender, use_container_width=True)
+
+    elif menu == "Tourism Diversity":
+        st.markdown('<div class="gradient-title">관심도 vs 실제 방문 매트릭스</div>', unsafe_allow_html=True)
+        st.markdown("<p class='sub-text'>관광자원 수요(관심도)와 방문자수(실제 방문)를 교차 분석하여 도시의 관광 성격을 분류합니다.</p>", unsafe_allow_html=True)
+        matrix_data = []
+        for area_name, area_code in AREA_CODES.items():
+            df_div_mock, df_res_mock = generate_demo_data(area_code, base_ym)
+            sns_val = df_res_mock[df_res_mock['demandMetric'] == 'SNS 언급량']['demandValue'].values[0] if not df_res_mock.empty else 0
+            vis_val = sns_val * random.uniform(1.2, 4.0)
+            matrix_data.append({"도시명": area_name, "관심도(X)": sns_val, "실제방문(Y)": vis_val})
+        df_matrix = pd.DataFrame(matrix_data)
+        avg_x = df_matrix["관심도(X)"].mean()
+        avg_y = df_matrix["실제방문(Y)"].mean()
+        fig_matrix = px.scatter(df_matrix, x="관심도(X)", y="실제방문(Y)", text="도시명", color="도시명", template="plotly_white", size_max=15)
+        fig_matrix.add_hline(y=avg_y, line_dash="dash", line_color="red")
+        fig_matrix.add_vline(x=avg_x, line_dash="dash", line_color="red")
+        fig_matrix.update_traces(textposition='top center', marker=dict(size=12))
+        fig_matrix.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", margin=dict(l=20, r=20, t=20, b=20), showlegend=False, height=600)
+        st.plotly_chart(fig_matrix, use_container_width=True)
+        st.markdown("### 🗺️ 도시 성격 분류")
+        st.markdown("* **1사분면 (우측 상단)**: 관심도 높음, 방문도 높음 (핵심 관광지)\n* **2사분면 (좌측 상단)**: 관심도 낮음, 방문도 높음 (교통 요지 및 숨은 명소)\n* **3사분면 (좌측 하단)**: 관심도 낮음, 방문도 낮음 (잠재적 개발 필요 지역)\n* **4사분면 (우측 하단)**: 관심도 높음, 방문도 낮음 (이슈 및 홍보 효과 우수, 실제 전환율 개선 필요)")
+
+    elif menu == "Demand Analysis":
+        st.markdown('<div class="gradient-title">도시 1:1 심층 비교 및 벤치마킹</div>', unsafe_allow_html=True)
+        st.markdown("<p class='sub-text'>두 도시 간의 관광 지표 및 연관 관광지 네트워크를 비교 분석합니다.</p>", unsafe_allow_html=True)
+        col_sel1, col_sel2 = st.columns(2)
+        area_names = list(AREA_CODES.keys())
+        with col_sel1: city1 = st.selectbox("비교 대상 도시 1", area_names, index=0)
+        with col_sel2: city2 = st.selectbox("비교 대상 도시 2", area_names, index=1)
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+
+        def draw_city_dashboard(col, city_name):
+            city_code = AREA_CODES[city_name]
+            with col:
+                st.markdown(f"<h3 style='color: #60A5FA;'>🏙️ {city_name}</h3>", unsafe_allow_html=True)
+                df_div_mock, df_res_mock = generate_demo_data(city_code, base_ym)
+                sns_val = df_res_mock[df_res_mock['demandMetric'] == 'SNS 언급량']['demandValue'].values[0] if not df_res_mock.empty else 0
+                con_val = df_res_mock[df_res_mock['demandMetric'] == '업종별 관광 소비액']['demandValue'].values[0] if not df_res_mock.empty else 0
+                vis_val = sns_val * random.uniform(1.5, 3.5)
+                c1, c2, c3 = st.columns(3)
+                c1.metric("총 방문객 수", f"{int(vis_val):,}명")
+                c2.metric("SNS 언급량", f"{int(sns_val):,}건")
+                c3.metric("추정 소비액", f"{(con_val/100000000):.1f}억원")
+                st.markdown("#### 주요 연관 관광지 (Top 5)")
+                
+                # --- 2. 연관 관광지 (areaBasedList1) 연동 로직 ---
+                attractions = [f"{city_name} 랜드마크 {i}" for i in range(1, 6)]
+                scores = sorted([random.randint(50, 100) for _ in range(5)], reverse=True)
+                
+                if data_mode == "실시간 OpenAPI 연동" and service_key:
+                    signgu_code = REPRESENTATIVE_SIGNGU.get(city_code)
+                    if signgu_code:
+                        url_rel = "https://apis.data.go.kr/B551011/TarRlteTarService1/areaBasedList1"
+                        rel_params = {'MobileOS': 'ETC', 'MobileApp': 'TourismApp', 'areaCd': city_code, 'signguCd': signgu_code, 'baseYm': base_ym}
+                        
+                        with st.spinner(f"🚀 {city_name} 연관 관광지 API 연동 중..."):
+                            df_rel = fetch_gokr_data(url_rel, service_key, extra_params=rel_params)
+                            if df_rel is not None and not df_rel.empty:
+                                if 'rlteTarNm' in df_rel.columns and 'rlteValue' in df_rel.columns:
+                                    df_rel['rlteValue'] = pd.to_numeric(df_rel['rlteValue'], errors='coerce').fillna(0)
+                                    df_top_api = df_rel.sort_values(by='rlteValue', ascending=False).head(5)
+                                    attractions = df_top_api['rlteTarNm'].tolist()
+                                    scores = df_top_api['rlteValue'].tolist()
+                
+                df_top = pd.DataFrame({"rlteTarNm": attractions, "rlteValue": scores})
+                fig = px.bar(df_top, x="rlteValue", y="rlteTarNm", orientation="h", color="rlteValue", color_continuous_scale="Teal", template="plotly_white")
+                fig.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False, height=250)
+                st.plotly_chart(fig, use_container_width=True)
+
+        draw_city_dashboard(col1, city1)
+        draw_city_dashboard(col2, city2)
+        
+    st.stop()
+
 # ----------------- 탭 구조 정의 -----------------
 tab_trends, tab1, tab3, tab5 = st.tabs([
     "📈 실시간 검색 트렌드 (구글트렌드/SNS)",
@@ -643,62 +1048,56 @@ tab_trends, tab1, tab3, tab5 = st.tabs([
 # ==========================================
 with tab_trends:
     # ----------------- Google Trends 분석 섹션 -----------------
-    st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 15px 25px; border-radius: 12px; border: 1px solid rgba(0, 210, 196, 0.1);'>", unsafe_allow_html=True)
-    st.markdown("<h4 style='font-size: 1.2rem; color: #00D2C4; font-weight: 700; margin-top: 0px; margin-bottom: 5px;'>📊 실시간 구글 트렌드(Google Trends) 분석</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='font-size: 1.2rem; color: #60A5FA; font-weight: 700; margin-top: 0px; margin-bottom: 5px;'>📊 실시간 구글 트렌드(Google Trends) 분석</h4>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 0.9rem; margin-bottom: 5px;'>전세계 및 해외 각국에서 한국 관광 관련하여 주요 도시들을 어떻게 검색하는지 랭킹을 추적합니다.</p>", unsafe_allow_html=True)
     st.markdown("<p style='color: #FFB300; font-size: 0.85rem; font-weight: 600; margin-top: 0px; margin-bottom: 8px;'>💡 안내: 순수 해외 외국인의 관점을 정밀 분석하기 위해 대한민국(KR) 및 대도시(서울, 부산)는 분석 대상에서 제외하였으며, 전세계 15개 이상의 주요 해외 인바운드 국가 필터를 제공합니다.</p>", unsafe_allow_html=True)
     
-    # 국가 및 기간 필터를 위한 2열 레이아웃 (국가 선택에 가로 공간을 대폭 할당합니다)
-    col_filter1, col_filter2 = st.columns([8.2, 1.8])
+    
+    col_filter1, col_filter2 = st.columns([8, 2])
+    
     with col_filter1:
-        # 헤더와 버튼들을 한 행에 컴팩트하게 배치하여 수직 공간을 아낍니다
-        col_lbl, col_b1, col_b2 = st.columns([4, 3, 3])
-        with col_lbl:
-            st.markdown("<p style='color: #00D2C4; font-size: 0.88rem; font-weight: 700; margin-top: 5px; margin-bottom: 0px;'>🗺️ 비교 분석 대상 국가 선택</p>", unsafe_allow_html=True)
-        
+        st.markdown("<p style='color: #60A5FA; font-size: 0.88rem; font-weight: 700; margin-bottom: 10px;'>🗺️ 비교 분석 대상 국가 선택</p>", unsafe_allow_html=True)
         # 각 국가 체크박스의 세션 기본값 True로 설정
         for c_name in country_options.keys():
             chk_key = f"chk_{c_name}"
             if chk_key not in st.session_state:
                 st.session_state[chk_key] = True
                 
-        with col_b1:
-            if st.button("🗺️ 전체 선택", use_container_width=True, key="btn_sel_all_new"):
-                for c_name in country_options.keys():
-                    st.session_state[f"chk_{c_name}"] = True
-                st.rerun()
-        with col_b2:
-            if st.button("❌ 전체 해제", use_container_width=True, key="btn_desel_all_new"):
-                for c_name in country_options.keys():
-                    st.session_state[f"chk_{c_name}"] = False
-                st.session_state["chk_전세계 (Global)"] = True
-                st.rerun()
-                
-        st.markdown("<div style='margin-top: 5px;'></div>", unsafe_allow_html=True)
-        # 8열 그리드로 국가 체크박스를 오른쪽 공간까지 길게 나열합니다
-        cols = st.columns(8)
+        # 6열 그리드로 국가 체크박스 나열
+        cols = st.columns(6)
         for idx, c_name in enumerate(country_options.keys()):
-            col_target = cols[idx % 8]
-            with col_target:
+            with cols[idx % 6]:
                 st.checkbox(c_name, key=f"chk_{c_name}")
                 
         selected_countries = [c_name for c_name in country_options.keys() if st.session_state.get(f"chk_{c_name}", False)]
         if not selected_countries:
             selected_countries = ["전세계 (Global)"]
             
-        # 우측 세부 분석 대상 국가는 선택된 국가 목록의 첫 번째 국가를 자동으로 지정합니다.
         selected_country_name = selected_countries[0]
         target_country = country_options[selected_country_name]
         
     with col_filter2:
         timeframe_options = {
-            "최근 3개월 (today 3-m)": "today 3-m",
-            "최근 12개월 (today 12-m)": "today 12-m"
+            "최근 3개월": "today 3-m",
+            "최근 12개월": "today 12-m"
         }
-        selected_timeframe_name = st.selectbox("분석 대상 기간 선택", list(timeframe_options.keys()), index=0)
+        # label_visibility를 collapsed로 설정하여 위에 빈 공간을 없앱니다.
+        selected_timeframe_name = st.selectbox("분석 대상 기간 선택", list(timeframe_options.keys()), index=0, label_visibility="collapsed")
         target_timeframe = timeframe_options[selected_timeframe_name]
         
-    # (공통 데이터 구조 정의는 최상단 전역 스코프로 이관되었습니다)
+        def select_all_cb():
+            for c_name in country_options.keys():
+                st.session_state[f"chk_{c_name}"] = True
+
+        def deselect_all_cb():
+            for c_name in country_options.keys():
+                st.session_state[f"chk_{c_name}"] = False
+            st.session_state["chk_전세계 (Global)"] = True
+
+        st.button("🗺️ 전체 선택", use_container_width=True, key="btn_sel_all_new", on_click=select_all_cb)
+        st.button("❌ 전체 해제", use_container_width=True, key="btn_desel_all_new", on_click=deselect_all_cb)
+            
+    st.markdown("<hr style='margin: 15px 0 25px 0; border-color: rgba(255,255,255,0.1);'>", unsafe_allow_html=True)
     
     with st.spinner("📊 구글 트렌드 국가별 도시 선호도 데이터 수집 및 분석 중..."):
         country_scores = {}
@@ -811,13 +1210,11 @@ with tab_trends:
 <style>
 div:not(section.main):not([data-testid="stAppViewContainer"]):has(#sticky-radar-wrapper) { overflow: visible !important; }
 div[data-testid="column"]:has(#sticky-radar-wrapper) {
-    position: sticky !important;
+    /* position: sticky removed */
     top: 130px !important;
     z-index: 990 !important;
 }
 </style>""", unsafe_allow_html=True)
-            st.markdown("<p style='color:#94A3B8; font-size:0.92rem; font-weight:600; margin-bottom:8px;'>📍 각 국가별 검색 관심도 다차원 비교 (레이더 차트):</p>", unsafe_allow_html=True)
-            
             # 레이더 차트 한글 축 정보
             city_to_ko_radar = {
                 "Seoul": "서울", "Busan": "부산", "Daegu": "대구", "Incheon": "인천", 
@@ -826,6 +1223,63 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                 "Jeonbuk": "전북", "Jeonnam": "전남", "Gyeongbuk": "경북", "Gyeongnam": "경남",
                 "Jeju": "제주"
             }
+            
+            # 선택한 국가들 기준 한국 관광도시 순위 집계
+            city_total_scores = {city: 0.0 for city in all_cities}
+            valid_countries_count = 0
+            for c_name in selected_countries:
+                if c_name == "전세계 (Global)" and len(selected_countries) > 1:
+                    continue
+                valid_countries_count += 1
+                scores = country_scores.get(c_name, {})
+                for city in all_cities:
+                    city_total_scores[city] += scores.get(city, 0.0)
+            
+            city_rank_list = [(city, city_total_scores[city]) for city in all_cities]
+            city_rank_list.sort(key=lambda x: x[1], reverse=True)
+            top3_cities = city_rank_list[:3]
+            
+            # 동적 제목 생성
+            if len(selected_countries) == 1:
+                title_country = selected_countries[0].split(" ")[0]
+                top3_title = f"🌍 '{title_country}' 선호 한국 관광도시 TOP 3"
+            else:
+                top3_title = f"🌍 선택 국가({valid_countries_count}개국 종합) 선호 한국 관광도시 TOP 3"
+                
+            st.markdown(f"<p style='color: #60A5FA; font-size: 0.88rem; font-weight: 700; margin: 15px 0 10px 0;'>{top3_title}</p>", unsafe_allow_html=True)
+            
+            # 버튼 스타일링용 CSS 주입
+            st.markdown("""
+            <style>
+            div[data-testid="column"]:has(button[key^="btn_top3_"]) button {
+                height: 80px;
+                background: rgba(255, 255, 255, 0.02) !important;
+                border: 1px solid rgba(255, 255, 255, 0.04) !important;
+                border-radius: 8px !important;
+                transition: all 0.3s ease;
+            }
+            div[data-testid="column"]:has(button[key^="btn_top3_"]) button:hover {
+                border-color: #60A5FA !important;
+                background: rgba(96, 165, 250, 0.1) !important;
+            }
+            div[data-testid="column"]:has(button[key^="btn_top3_"]) button p {
+                font-size: 0.95rem;
+                font-weight: 800;
+                color: #E2E8F0;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            cols = st.columns(3)
+            medals = ["🥇 1위", "🥈 2위", "🥉 3위"]
+            for i, (city_en, score) in enumerate(top3_cities):
+                city_ko = city_to_ko_radar.get(city_en, city_en)
+                with cols[i]:
+                    if st.button(f"{medals[i]} {city_ko}\\n{score:.1f}점", key=f"btn_top3_{city_en}", use_container_width=True):
+                        st.session_state.selected_metric_city = city_en
+                        st.rerun()
+            
+            st.markdown("<p style='color:#94A3B8; font-size:0.92rem; font-weight:600; margin-bottom:8px;'>📍 각 국가별 검색 관심도 다차원 비교 (레이더 차트):</p>", unsafe_allow_html=True)
             
             # Plotly 고품질 레이더 차트 생성
             fig_radar = ob.Figure()
@@ -878,66 +1332,10 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
             
             st.plotly_chart(fig_radar, use_container_width=True, config={'displayModeBar': False})
             
-            # 분석 대상 도시 선택 셀렉터 제공 (기존 지도 클릭을 대체)
-            st.markdown("<p style='color:#94A3B8; font-size:0.92rem; font-weight:600; margin-top:10px; margin-bottom:4px;'>🔍 분석할 도시 선택 (우측 핵심 지표 연동):</p>", unsafe_allow_html=True)
-            
-            selected_city_ko_options = [city_to_ko_radar.get(c, c) for c in all_cities]
-            current_sel_ko = city_to_ko_radar.get(selected_city_en, "서울")
-            
-            if current_sel_ko in selected_city_ko_options:
-                default_idx = selected_city_ko_options.index(current_sel_ko)
-            else:
-                default_idx = 0
-                
-            selected_city_ko_sel = st.selectbox(
-                "도시 선택",
-                selected_city_ko_options,
-                index=default_idx,
-                label_visibility="collapsed"
-            )
-            
-            # 한글명을 다시 영문 키값으로 변환하여 세션 상태에 저장
-            ko_to_en = {v: k for k, v in city_to_ko_radar.items()}
-            clicked_city = ko_to_en.get(selected_city_ko_sel, "Seoul")
-            
-            if clicked_city != st.session_state.get('selected_metric_city'):
-                st.session_state.selected_metric_city = clicked_city
-                st.rerun()
-                
-            # 전체 15개 해외 국가 대상 1, 2, 3순위 관심 국가 랭킹 연산 및 표시
-            country_rank_list = []
-            for c_name, c_code in country_options.items():
-                if c_name == "전세계 (Global)":
-                    continue
-                score = country_scores.get(c_name, {}).get(selected_city_en, 0.0)
-                country_rank_list.append((c_name, score))
-                
-            country_rank_list.sort(key=lambda x: x[1], reverse=True)
-            top3 = country_rank_list[:3]
-            
-            medals = ["🥇 1위", "🥈 2위", "🥉 3위"]
-            colors = ["#FFD166", "#E2E8F0", "#FF9F1C"]
-            
-            # HTML 내부에 들여쓰기가 있으면 Markdown 파서가 코드 블록으로 오인하므로 들여쓰기 공백을 제거하여 처리합니다
-            top3_html = f"<div style='background: rgba(22, 29, 48, 0.5); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(0, 210, 196, 0.2); margin-top: 15px;'>" \
-                        f"<p style='color: #00D2C4; font-size: 0.88rem; font-weight: 700; margin: 0 0 10px 0;'>🌍 '{selected_city_ko}' 선호도 최상위 해외 국가 TOP 3</p>" \
-                        f"<div style='display: flex; gap: 8px; justify-content: space-between;'>"
-            for i, (c_name, score) in enumerate(top3):
-                medal = medals[i]
-                color = colors[i]
-                c_display_name = c_name.split(" ")[0]
-                top3_html += f"<div style='flex: 1; text-align: center; background: rgba(255, 255, 255, 0.02); padding: 6px 4px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.04);'>" \
-                             f"<span style='font-size: 0.78rem; color: {color}; font-weight: 700; display: block;'>{medal}</span>" \
-                             f"<span style='font-size: 0.92rem; color: #E2E8F0; font-weight: 800; display: block; margin-top: 2px;'>{c_display_name}</span>" \
-                             f"<span style='font-size: 0.78rem; color: #94A3B8; display: block; margin-top: 2px;'>{score:.1f}점</span>" \
-                             f"</div>"
-            top3_html += "</div></div>"
-            st.markdown(top3_html, unsafe_allow_html=True)
-                
         with col_metrics_right:
             st.markdown(f"""
-            <div style='background: rgba(22, 29, 48, 0.5); padding: 12px 20px; border-radius: 16px; border: 1px solid rgba(0, 210, 196, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); margin-bottom: 0px; margin-left: 10px;'>
-            <h4 style='color: #00D2C4; font-weight: 800; font-size: 1.1rem; margin-top: 0; margin-bottom: 5px;'>📍 [{selected_city_ko}] 핵심 관광 지표 ({rank_label})</h4>
+            <div style='background: rgba(22, 29, 48, 0.5); padding: 12px 20px; border-radius: 16px; border: 1px solid rgba(96, 165, 250, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35); backdrop-filter: blur(8px); margin-bottom: 0px; margin-left: 10px;'>
+            <h4 style='color: #60A5FA; font-weight: 800; font-size: 1.1rem; margin-top: 0; margin-bottom: 5px;'>📍 [{selected_city_ko}] 핵심 관광 지표 ({rank_label})</h4>
             <p style='color: #94A3B8; font-size: 0.85rem; margin-bottom: 8px;'>지도에서 선택된 <b>{selected_city_ko} ({selected_city_en})</b> 지역의 외국인 관광 수요 및 지수입니다.</p>
             <style>
             .sq-btn {{
@@ -960,9 +1358,9 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
             }}
             </style>
             <div style='display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 0;'>
-                <div class='sq-btn' style='border: 1px solid rgba(0, 210, 196, 0.4); flex: 1 1 120px;'>
+                <div class='sq-btn' style='border: 1px solid rgba(96, 165, 250, 0.4); flex: 1 1 120px;'>
                     <span style='color: #E2E8F0; font-size: 0.85rem; font-weight:600; line-height: 1.3; display: block; text-align: center;'>📊 평균 관광<br>다양성</span>
-                    <h3 style='color: #00D2C4; font-weight:900; font-size: 1.45rem; margin: 4px 0 0 0; text-align: center;'>{sel_avg_div:.1f}</h3>
+                    <h3 style='color: #60A5FA; font-weight:900; font-size: 1.45rem; margin: 4px 0 0 0; text-align: center;'>{sel_avg_div:.1f}</h3>
                 </div>
                 <div class='sq-btn' style='border: 1px solid rgba(255, 117, 143, 0.4); flex: 1 1 120px;'>
                     <span style='color: #E2E8F0; font-size: 0.85rem; font-weight:600; line-height: 1.3; display: block; text-align: center;'>📱 SNS 관심도<br>(언급량)</span>
@@ -988,7 +1386,7 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
             )
             
             if analysis_menu == "다차원 지표분석":
-                st.markdown(f"<h3 style='font-size: 1.2rem; color: #00D2C4; font-weight: 700; margin: 0; padding-left: 10px;'>[{selected_city_ko}] 다차원 지표 분석</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='font-size: 1.2rem; color: #60A5FA; font-weight: 700; margin: 0; padding-left: 10px;'>[{selected_city_ko}] 다차원 지표 분석</h3>", unsafe_allow_html=True)
             
                 # 지역별 실질 국적 분포 데이터셋
                 national_shares = {
@@ -1037,7 +1435,6 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                 )
                 fig_bar.update_traces(texttemplate='%{text}%', textposition='outside', textfont=dict(color="#94A3B8"))
                 st.plotly_chart(fig_bar, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
             elif analysis_menu == "연령/성별 다양성 분석":
                 st.markdown("<div style='background: rgba(17, 24, 39, 0.5); padding: 15px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05); margin-top: 15px; margin-left: 10px;'>", unsafe_allow_html=True)
                 st.markdown(f"<h4 style='font-size: 0.95rem; color: #E2E8F0; margin-top: 8px; margin-bottom: 15px;'>⚧️ [{selected_country_name}] 연령/성별 다양성 분석</h4>", unsafe_allow_html=True)
@@ -1097,7 +1494,6 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                 # 텍스트 오버랩 방지
                 fig_age_gender.update_traces(texttemplate='%{text}%', textposition='auto')
                 st.plotly_chart(fig_age_gender, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
             elif analysis_menu == "주요 소비 성향분석":
                 st.markdown("<div style='background: rgba(17, 24, 39, 0.5); padding: 15px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.05); margin-top: 15px; margin-left: 10px;'>", unsafe_allow_html=True)
                 st.markdown(f"<h4 style='font-size: 0.95rem; color: #E2E8F0; margin-top: 0; margin-bottom: 5px;'>🛍️ [{selected_country_name}] 주요 소비 성향 분석</h4>", unsafe_allow_html=True)
@@ -1149,7 +1545,6 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                     marker=dict(line=dict(color='#111827', width=2))
                 )
                 st.plotly_chart(fig_consume, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
             elif analysis_menu == "sns관심도 키워드별 분석":
                 # ----------------- SNS 키워드 분석 섹션 병합 -----------------
                 st.markdown("<br/><hr/><br/>", unsafe_allow_html=True)
@@ -1166,7 +1561,6 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                 col_sns1, col_sns2 = st.columns([4, 6])
     
                 with col_sns1:
-                    st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
                     st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>🔍 카테고리 필터 및 순위</h4>", unsafe_allow_html=True)
         
                     # 카테고리 선택 필터
@@ -1185,10 +1579,7 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                         use_container_width=True,
                         hide_index=True
                     )
-                    st.markdown("</div>", unsafe_allow_html=True)
-        
                 with col_sns2:
-                    st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
                     st.markdown(f"<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>📊 '{selected_cat}' 분야 세부 키워드 비율 (Treemap)</h4>", unsafe_allow_html=True)
         
                     # 트리맵 시각화
@@ -1208,7 +1599,6 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                         coloraxis_showscale=False
                     )
                     st.plotly_chart(fig_tree, use_container_width=True)
-                    st.markdown("</div>", unsafe_allow_html=True)
             elif analysis_menu == "관광키워드 관심도 종합분포":
                 # 하단 전체 키워드 종합 분포 바 차트
                 sns_total = int(sel_sns_val)
@@ -1216,7 +1606,6 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                 df_sns_kw = get_sns_keyword_data(sns_total, sns_area_code)
                 
                 st.markdown("<br/>", unsafe_allow_html=True)
-                st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
                 st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>🌐 관광 키워드 관심도 종합 분포</h4>", unsafe_allow_html=True)
         
                 fig_sns_all = px.bar(
@@ -1238,9 +1627,7 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
                     legend=dict(font=dict(color="#94A3B8"), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
                 )
                 st.plotly_chart(fig_sns_all, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown("<br/>", unsafe_allow_html=True)
+                st.markdown("<br/>", unsafe_allow_html=True)
         if is_mock:
             st.info("💡 구글 트렌드 API의 일시적인 호출 제한(429 Too Many Requests)으로 인해 AI 분석 기반 도시 선호도 순위로 우회하여 적용되었습니다.")
         else:
@@ -1248,9 +1635,7 @@ div[data-testid="column"]:has(#sticky-radar-wrapper) {
     else:
         st.warning("⚠️ 구글 트렌드 데이터를 조회할 수 없습니다.")
         
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ==========================================
+    # ==========================================
 # TAB 1: 종합 요약 분석 (Overview)
 # ==========================================
 with tab1:
@@ -1262,7 +1647,6 @@ with tab1:
     
     with col_ov1:
         # 연령대별 다양성 지수를 한눈에 비교하는 바 차트
-        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 15px; border-radius: 12px;'>", unsafe_allow_html=True)
         st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 10px;'>👥 연령대별 관광 수요 다양성 지표</h4>", unsafe_allow_html=True)
         
         # Plotly를 이용한 아름다운 세로형 바 차트 생성
@@ -1271,7 +1655,7 @@ with tab1:
             x="expDivIxNm",
             y="touDivValue",
             color="touDivValue",
-            color_continuous_scale=["#111827", "#00D2C4"],
+            color_continuous_scale=["#111827", "#60A5FA"],
             labels={"expDivIxNm": "연령 구분", "touDivValue": "다양성 지수 (0-100)"},
             template="plotly_dark"
         )
@@ -1286,57 +1670,52 @@ with tab1:
             yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)")
         )
         st.plotly_chart(fig_bar, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    with col_ov2:
-        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 15px; border-radius: 12px;'>", unsafe_allow_html=True)
-        st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 10px;'>🕸️ 관광 서비스 자원 수요 분석</h4>", unsafe_allow_html=True)
-        
-        # 레이더 차트 생성 (자원 수요 시각화에 적합)
-        categories = df_resource["demandMetric"].tolist()
-        values = df_resource["demandValue"].tolist()
-        
-        # 스케일 조정을 위해 백분율 점수로 변환 (예시용 시각화 맵핑)
-        max_val = max(values) if values else 1
-        normalized_values = [v / max_val * 100 for v in values]
-        
-        fig_radar = ob.Figure()
-        fig_radar.add_trace(ob.Scatterpolar(
-            r=normalized_values,
-            theta=categories,
-            fill='toself',
-            name=selected_area_name,
-            line_color='#00D2C4',
-            fillcolor='rgba(0, 210, 196, 0.2)'
-        ))
-        
-        fig_radar.update_layout(
-            polar=dict(
-                radialaxis=dict(
-                    visible=True,
-                    range=[0, 100],
-                    showticklabels=False,
-                    gridcolor="rgba(255,255,255,0.08)"
+        with col_ov2:
+            st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 10px;'>🕸️ 관광 서비스 자원 수요 분석</h4>", unsafe_allow_html=True)
+            
+            # 레이더 차트 생성 (자원 수요 시각화에 적합)
+            categories = df_resource["demandMetric"].tolist()
+            values = df_resource["demandValue"].tolist()
+            
+            # 스케일 조정을 위해 백분율 점수로 변환 (예시용 시각화 맵핑)
+            max_val = max(values) if values else 1
+            normalized_values = [v / max_val * 100 for v in values]
+            
+            fig_radar = ob.Figure()
+            fig_radar.add_trace(ob.Scatterpolar(
+                r=normalized_values,
+                theta=categories,
+                fill='toself',
+                name=selected_area_name,
+                line_color='#60A5FA',
+                fillcolor='rgba(96, 165, 250, 0.2)'
+            ))
+            
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(
+                        visible=True,
+                        range=[0, 100],
+                        showticklabels=False,
+                        gridcolor="rgba(255,255,255,0.08)"
+                    ),
+                    angularaxis=dict(
+                        gridcolor="rgba(255,255,255,0.08)",
+                        tickfont=dict(color="#94A3B8", size=10)
+                    ),
+                    bgcolor="rgba(0,0,0,0)"
                 ),
-                angularaxis=dict(
-                    gridcolor="rgba(255,255,255,0.08)",
-                    tickfont=dict(color="#94A3B8", size=10)
-                ),
-                bgcolor="rgba(0,0,0,0)"
-            ),
-            showlegend=False,
-            paper_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=40, r=40, t=30, b=40),
-            height=320
-        )
-        st.plotly_chart(fig_radar, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    # 하단 분석 통찰 (Insight Card)
+                showlegend=False,
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=40, r=40, t=30, b=40),
+                height=320
+            )
+            st.plotly_chart(fig_radar, use_container_width=True)
+            # 하단 분석 통찰 (Insight Card)
     st.markdown("<br/>", unsafe_allow_html=True)
     st.markdown(f"""
-<div style='background: rgba(0, 210, 196, 0.05); border: 1px dashed rgba(0, 210, 196, 0.2); padding: 20px; border-radius: 12px;'>
-<h4 style='color:#00D2C4; font-weight: 700; margin-top: 0;'>💡 Antigravity 데이터 분석 인사이트</h4>
+<div style='background: rgba(96, 165, 250, 0.05); border: 1px dashed rgba(96, 165, 250, 0.2); padding: 20px; border-radius: 12px;'>
+<h4 style='color:#60A5FA; font-weight: 700; margin-top: 0;'>💡 Antigravity 데이터 분석 인사이트</h4>
 <p style='color: #E2E8F0; font-size: 0.95rem; line-height: 1.6; margin: 0;'>
 현재 <b>{selected_area_name}</b> 지역은 <b>20대 및 30대 연령층</b>에서 가장 가장 높은 관광 다양성 지수({df_diversity['touDivValue'].max()}점)를 나타내고 있습니다. 
 SNS 언급량과 내비게이션 목적지 검색량이 조화를 이루며 유입량이 증가하고 있으나, 문화 자원 검색량에 비해 업종별 관광 소비액의 전환율을 더욱 높일 필요가 있습니다. 
@@ -1354,7 +1733,6 @@ with tab3:
     col_res1, col_res2 = st.columns([4, 6])
     
     with col_res1:
-        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
         st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>📋 세부 지표별 수치 일람</h4>", unsafe_allow_html=True)
         
         # 깔끔하게 포맷팅된 데이터 프레임 뷰
@@ -1372,44 +1750,35 @@ with tab3:
             use_container_width=True,
             hide_index=True
         )
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    with col_res2:
-        st.markdown("<div style='background: rgba(22, 29, 48, 0.4); padding: 20px; border-radius: 12px;'>", unsafe_allow_html=True)
-        st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>📊 자원 수요 비교 (로그 스케일 적용)</h4>", unsafe_allow_html=True)
-        
-        # 값이 수억대와 만단위로 편차가 심하므로 로그 스케일로 예쁘게 정렬하여 비교 가능하게 함
-        import numpy as np
-        df_log = df_resource.copy()
-        df_log['logValue'] = np.log10(df_log['demandValue'] + 1)
-        
-        fig_res_bar = px.bar(
-            df_log,
-            y="demandMetric",
-            x="logValue",
-            orientation="h",
-            color="demandMetric",
-            color_discrete_sequence=["#FF758F", "#FFD166", "#0077FF", "#06D6A0"],
-            labels={"demandMetric": "수요 지표", "logValue": "지수 크기 (Log scale)"},
-            template="plotly_dark"
-        )
-        fig_res_bar.update_layout(
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            showlegend=False,
-            margin=dict(l=20, r=20, t=10, b=20),
-            height=300,
-            xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)"),
-            yaxis=dict(showgrid=False)
-        )
-        st.plotly_chart(fig_res_bar, use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
-    
-
-
-# ==========================================
+        with col_res2:
+            st.markdown("<h4 style='font-size: 1rem; color: #E2E8F0; margin-bottom: 15px;'>📊 자원 수요 비교 (로그 스케일 적용)</h4>", unsafe_allow_html=True)
+            
+            # 값이 수억대와 만단위로 편차가 심하므로 로그 스케일로 예쁘게 정렬하여 비교 가능하게 함
+            import numpy as np
+            df_log = df_resource.copy()
+            df_log['logValue'] = np.log10(df_log['demandValue'] + 1)
+            
+            fig_res_bar = px.bar(
+                df_log,
+                y="demandMetric",
+                x="logValue",
+                orientation="h",
+                color="demandMetric",
+                color_discrete_sequence=["#FF758F", "#FFD166", "#0077FF", "#06D6A0"],
+                labels={"demandMetric": "수요 지표", "logValue": "지수 크기 (Log scale)"},
+                template="plotly_dark"
+            )
+            fig_res_bar.update_layout(
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                showlegend=False,
+                margin=dict(l=20, r=20, t=10, b=20),
+                height=300,
+                xaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)"),
+                yaxis=dict(showgrid=False)
+            )
+            st.plotly_chart(fig_res_bar, use_container_width=True)
+        # ==========================================
 # TAB 5: 원본 데이터 & 엑셀 다운로드 (Data Table)
 # ==========================================
 with tab5:
@@ -1419,7 +1788,7 @@ with tab5:
     col_dt1, col_dt2 = st.columns(2)
     
     with col_dt1:
-        st.markdown("<h5 style='color:#00D2C4;'>1. 지역별 관광 다양성 데이터 (API 1)</h5>", unsafe_allow_html=True)
+        st.markdown("<h5 style='color:#60A5FA;'>1. 지역별 관광 다양성 데이터 (API 1)</h5>", unsafe_allow_html=True)
         st.dataframe(df_diversity, use_container_width=True)
         
         # CSV 다운로드 기능
@@ -1444,11 +1813,8 @@ with tab5:
             mime="text/csv"
         )
 
-# 하단 정보 푸터
-st.markdown("---")
-st.markdown(f"""
-<div style='text-align: center; color: #64748B; font-size: 0.85rem; padding: 20px 0;'>
-대한민국 공공데이터포털(data.go.kr) & 한국관광공사 TourAPI 실시간 연동 대시보드<br/>
-Designed & Programmed by <b>Antigravity</b> Team. Current System Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-</div>
-""", unsafe_allow_html=True)
+
+
+
+
+st.markdown('<a href="#top" class="top-btn" title="맨 위로 가기">↑</a>', unsafe_allow_html=True)

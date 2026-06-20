@@ -1,0 +1,40 @@
+        st.markdown("<p style='color: #60A5FA; font-size: 0.88rem; font-weight: 700; margin-bottom: 10px;'>🗺️ 비교 분석 대상 국가 선택</p>", unsafe_allow_html=True)
+        # 각 국가 체크박스의 세션 기본값 True로 설정
+        for c_name in country_options.keys():
+            chk_key = f"chk_{c_name}"
+            if chk_key not in st.session_state:
+                st.session_state[chk_key] = True
+                
+        # 6열 그리드로 국가 체크박스 나열
+        cols = st.columns(6)
+        for idx, c_name in enumerate(country_options.keys()):
+            with cols[idx % 6]:
+                st.checkbox(c_name, key=f"chk_{c_name}")
+                
+        selected_countries = [c_name for c_name in country_options.keys() if st.session_state.get(f"chk_{c_name}", False)]
+        if not selected_countries:
+            selected_countries = ["전세계 (Global)"]
+            
+        selected_country_name = selected_countries[0]
+        target_country = country_options[selected_country_name]
+        
+    with col_filter2:
+        timeframe_options = {
+            "최근 3개월": "today 3-m",
+            "최근 12개월": "today 12-m"
+        }
+        # label_visibility를 collapsed로 설정하여 위에 빈 공간을 없앱니다.
+        selected_timeframe_name = st.selectbox("분석 대상 기간 선택", list(timeframe_options.keys()), index=0, label_visibility="collapsed")
+        target_timeframe = timeframe_options[selected_timeframe_name]
+        
+        def select_all_cb():
+            for c_name in country_options.keys():
+                st.session_state[f"chk_{c_name}"] = True
+
+        def deselect_all_cb():
+            for c_name in country_options.keys():
+                st.session_state[f"chk_{c_name}"] = False
+            st.session_state["chk_전세계 (Global)"] = True
+
+        st.button("🗺️ 전체 선택", use_container_width=True, key="btn_sel_all_new", on_click=select_all_cb)
+        st.button("❌ 전체 해제", use_container_width=True, key="btn_desel_all_new", on_click=deselect_all_cb)
