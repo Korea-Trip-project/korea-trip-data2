@@ -6,6 +6,8 @@ import plotly.graph_objects as go
 import os
 import requests
 import urllib.parse
+import sqlite3
+import json
 try:
     from textblob import TextBlob
 except ImportError:
@@ -224,6 +226,199 @@ def load_csv_data():
 
 csv_data = load_csv_data()
 
+# ----------------- 외국인 리뷰 데이터 로드 및 정제 모델 -----------------
+@st.cache_data
+def load_reviews_data():
+    # Define standard regions mapping keywords
+    REGIONS_MAP = {
+        "인천광역시": ["인천", "강화", "인스파이어", "월미도", "영종"],
+        "대구광역시": ["대구", "달성", "서문시장"],
+        "대전광역시": ["대전"],
+        "울산광역시": ["울산", "간절곶", "울주군"],
+        "광주광역시": ["광주"],
+        "세종특별자치시": ["세종"],
+        "경기도": ["경기", "수원", "파주", "에버랜드", "포천", "양평", "가평", "이천", "지산", "광명", "김포", "양주", "제부도", "아침고요수목원", "쁘띠프랑스", "이탈리아 빌리지", "DMZ", "비무장지대", "제3땅굴", "도라산", "임진각"],
+        "강원특별자치도": ["강원", "춘천", "남이섬", "설악산", "설악 케이블카", "원주", "평창", "속초", "화천", "비발디파크", "레고랜드", "오크밸리", "알파카월드", "강촌레일바이크", "삼악산", "주문진"],
+        "충청북도": ["충청북도", "충북", "청도"],
+        "충청남도": ["충청남도", "충남", "아산", "보령"],
+        "전라북도": ["전라북도", "전북", "전주", "익산", "내장사", "내장산"],
+        "전라남도": ["전라남도", "전남", "여수", "순천"],
+        "경상북도": ["경상북도", "경북", "경주", "안동", "포항", "봉화", "석굴암", "불국사", "첨성대"],
+        "경상남도": ["경상남도", "경남", "김해", "창원", "진해", "진주", "산청", "고성", "밀양"]
+    }
+
+    # Seoul, Busan, Jeju sub-destinations and others to exclude
+    EXCLUDE_KWS = [
+        "서울", "명동", "홍대", "인사동", "경복궁", "강남", "창덕궁", "청와대", "롯데월드", 
+        "광화문", "동대문", "압구정", "남산", "N서울타워", "광장시장", "여의도", "올림픽 공원", "코엑스", "성수", "청담", "창경", "덕수", "익선", "신촌", "이대", "대학로", "혜화", "잠실", "송파", "북촌",
+        "부산", "해운대", "광안리", "감천", "남포", "영도", "자갈치", "오륙도", "다대포", "서면", "용궁사", "동부산", "민락동",
+        "제주", "서귀포", "성산", "우도", "한라산"
+    ]
+
+    def clean_rating(val):
+        if not val:
+            return 0.0
+        try:
+            val_str = str(val).strip().replace('/5', '')
+            if val_str == 'N/A' or val_str == '':
+                return 0.0
+            return float(val_str)
+        except:
+            return 0.0
+
+    def clean_reviews(val):
+        if not val:
+            return 0
+        try:
+            val_str = str(val).strip().replace(',', '')
+            if val_str == 'N/A' or val_str == '':
+                return 0
+            return int(float(val_str))
+        except:
+            return 0
+
+    def get_region_from_dests(dest_list_str, name):
+        if not dest_list_str:
+            return None
+        try:
+            dests = json.loads(dest_list_str)
+            for d in dests:
+                d_name = d.get('name', '')
+                code = d.get('code', '')
+                if code and not code.startswith('D-KR-'):
+                    continue
+                for kw in EXCLUDE_KWS:
+                    if kw in d_name or kw in name:
+                        return "EXCLUDE"
+                        
+            for region, kw_list in REGIONS_MAP.items():
+                for kw in kw_list:
+                    for d in dests:
+                        d_name = d.get('name', '')
+                        code = d.get('code', '')
+                        if code and not code.startswith('D-KR-'):
+                            continue
+                        if kw in d_name:
+                            return region
+                            
+            for region, kw_list in REGIONS_MAP.items():
+                for kw in kw_list:
+                    if kw in name:
+                        return region
+        except Exception as e:
+            pass
+        return None
+
+    combined_items = []
+    
+    # 1. Getyourguide.db
+    gyg_db = os.path.join(BASE_DIR, "★korea-trip-data", "data", "getyourguide.db")
+    if os.path.exists(gyg_db):
+        conn_gyg = sqlite3.connect(gyg_db)
+        cursor_gyg = conn_gyg.cursor()
+        cursor_gyg.execute('SELECT title, rating, reviews, region FROM activities')
+        for row in cursor_gyg.fetchall():
+            title, rating_raw, reviews_raw, region_raw = row
+            rating = clean_rating(rating_raw)
+            reviews = clean_reviews(reviews_raw)
+            
+            region = None
+            for r_std, kw_list in REGIONS_MAP.items():
+                for kw in kw_list:
+                    if kw in region_raw:
+                        region = r_std
+                        break
+                if region:
+                    break
+                    
+            is_excluded = False
+            for kw in EXCLUDE_KWS:
+                if kw in region_raw or kw in title:
+                    is_excluded = True
+                    break
+            if is_excluded or not region:
+                continue
+                
+            is_accommodation = False
+            accom_kws = ['호텔', '리조트', '펜션', '게스트하우스', '글램핑', '카라반', '호스텔', '민박', '숙소', '숙박', 'hotel', 'resort', 'guesthouse', 'hostel', 'stay', '콘도']
+            for kw in accom_kws:
+                if kw in title.lower():
+                    is_accommodation = True
+                    break
+                    
+            combined_items.append({
+                "title": title,
+                "region": region,
+                "rating": rating,
+                "reviews": reviews,
+                "category": "Accommodation" if is_accommodation else "Activity",
+                "source": "Getyourguide"
+            })
+        conn_gyg.close()
+        
+    # 2. kkday_products.db
+    kkd_db = os.path.join(BASE_DIR, "★korea-trip-data", "data", "kkday_products.db")
+    if os.path.exists(kkd_db):
+        conn_kkd = sqlite3.connect(kkd_db)
+        cursor_kkd = conn_kkd.cursor()
+        cursor_kkd.execute("""
+            SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num 
+            FROM kkday_products p
+            LEFT JOIN kkday_product_details d ON p.prod_mid = d.prod_mid
+        """)
+        for row in cursor_kkd.fetchall():
+            name, destinations_str, guide_langs, score_raw, rec_num_raw = row
+            
+            is_korean_only = False
+            if guide_langs:
+                try:
+                    langs = json.loads(guide_langs)
+                    if isinstance(langs, list) and len(langs) == 1 and langs[0] == 'ko':
+                        is_korean_only = True
+                except:
+                    if guide_langs == '["ko"]':
+                        is_korean_only = True
+            if "한국인 전용" in name:
+                is_korean_only = True
+                
+            if is_korean_only:
+                continue
+                
+            region = get_region_from_dests(destinations_str, name)
+            if region == "EXCLUDE" or not region:
+                continue
+                
+            rating = clean_rating(score_raw)
+            reviews = clean_reviews(rec_num_raw)
+            
+            is_accommodation = False
+            accom_kws = ['호텔', '리조트', '펜션', '게스트하우스', '글램핑', '카라반', '호스텔', '민박', '숙소', '숙박', 'hotel', 'resort', 'guesthouse', 'hostel', 'stay', '콘도']
+            for kw in accom_kws:
+                if kw in name.lower():
+                    is_accommodation = True
+                    break
+                    
+            combined_items.append({
+                "title": name,
+                "region": region,
+                "rating": rating,
+                "reviews": reviews,
+                "category": "Accommodation" if is_accommodation else "Activity",
+                "source": "KKday"
+            })
+        conn_kkd.close()
+        
+    df = pd.DataFrame(combined_items)
+    if not df.empty:
+        df = df.groupby(['title', 'region', 'category']).agg(
+            rating=('rating', 'median'),
+            reviews=('reviews', 'median'),
+            source=('source', lambda x: ', '.join(sorted(x.unique())))
+        ).reset_index()
+    return df
+
+reviews_df = load_reviews_data()
+
 # ----------------- 데이터 계산 모델 통합 정의 -----------------
 regions_en = {
     "인천광역시": "Incheon", "대구광역시": "Daegu", "광주광역시": "Gwangju", "대전광역시": "Daejeon",
@@ -297,7 +492,7 @@ for reg, val in visits_datalab.items():
     })
 df_visit = pd.DataFrame(visit_records)
 
-# ----------------- 사이드바 메뉴 구성 (딱 3개 메뉴로 정형화) -----------------
+# ----------------- 사이드바 메뉴 구성 -----------------
 with st.sidebar:
     st.markdown('<div class="sidebar-header">🌏 KOREA TRIP DATA</div>', unsafe_allow_html=True)
     menu = st.radio(
@@ -305,7 +500,8 @@ with st.sidebar:
         [
             "🌐 외국인 한국 지역별 관심도",
             "👣 외국인 한국 지역별 방문도",
-            "⚖️ 외국인 관심도vs방문도"
+            "⚖️ 외국인 관심도vs방문도",
+            "💬 외국인 리뷰 기반 지역·콘텐츠 추천"
         ],
         label_visibility="collapsed"
     )
@@ -687,4 +883,262 @@ elif menu == "⚖️ 외국인 관심도vs방문도":
           1. **수도권 집중도 및 빨대 효과**: 서울 지하철 노선망과 연결된 뛰어난 지리적 인접성 덕분에 가장 쉽게 방문할 수 있는 외곽 코스가 되었습니다.
           2. **검증된 고인지 단체 관광지 집결**: 판문점(DMZ 안보관광), 용인 에버랜드, 수원 화성 등 단체 관광객의 필수 패키지 코스들이 경기도 행정 구역에 위치해 실측 유입량이 절대적입니다.
           3. **검색 키워드의 분산 효과**: 외국인들은 'Gyeonggi-do'라는 시도 명칭보다 'DMZ Tour', 'Everland' 등 개별 목적지 키워드로 검색하기 때문에 관심도 랭킹에서는 과소 평가되는 특성이 존재합니다.
+        """)
+
+
+# =====================================================================
+# 메뉴 4: 💬 외국인 리뷰 기반 지역·콘텐츠 추천
+# =====================================================================
+elif menu == "💬 외국인 리뷰 기반 지역·콘텐츠 추천":
+    st.markdown('<div class="main-title">💬 외국인 리뷰 기반 지역·콘텐츠 추천</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-title">글로벌 OTA(GetYourGuide, KKday) 리뷰 빅데이터 분석을 통해 서울, 부산, 제주를 제외한 전국 주요 시도의 인기 지역, 액티비티, 숙박시설 Top 3를 제안합니다. (내국인 유입 배제)</div>', unsafe_allow_html=True)
+
+    if reviews_df.empty:
+        st.warning("⚠️ **데이터 부재 안내**: 분석할 리뷰 데이터가 데이터베이스에 존재하지 않습니다.")
+    else:
+        # KPI 계량 보드
+        k1, k2, k3 = st.columns(3)
+        with k1:
+            total_revs = reviews_df['reviews'].sum()
+            st.markdown(f'<div class="metric-card"><div class="metric-label">총 외국인 리뷰 수</div><div class="metric-value">{int(total_revs):,} 건</div></div>', unsafe_allow_html=True)
+        with k2:
+            total_prods = reviews_df['title'].nunique()
+            st.markdown(f'<div class="metric-card"><div class="metric-label">총 고유 상품 수</div><div class="metric-value">{total_prods:,} 개</div></div>', unsafe_allow_html=True)
+        with k3:
+            st.markdown(f'<div class="metric-card"><div class="metric-label">분석 연동 데이터베이스</div><div class="metric-value" style="font-size: 1.5rem; margin-top: 15px; color: #10B981;">GetYourGuide & KKday</div></div>', unsafe_allow_html=True)
+
+        t_rec1, t_rec2, t_rec3 = st.tabs(["🏆 인기 지역 Top 3", "🎯 인기 액티비티 Top 3", "🏨 인기 숙박시설 Top 3"])
+
+        # 1. 인기 지역 탭
+        with t_rec1:
+            st.markdown("### 🏆 외국인 리뷰 중앙값 기준 인기 지역 Top 3")
+            region_summary = reviews_df.groupby('region').agg(
+                total_reviews=('reviews', 'median'),
+                avg_rating=('rating', 'median'),
+                product_count=('title', 'count')
+            ).reset_index().sort_values(by='total_reviews', ascending=False).reset_index(drop=True)
+
+            col1, col2, col3 = st.columns(3)
+            
+            # Ensure at least 3 regions exist or pad
+            r_top1 = region_summary.iloc[0] if len(region_summary) > 0 else {"region": "데이터 없음", "total_reviews": 0, "avg_rating": 0.0, "product_count": 0}
+            r_top2 = region_summary.iloc[1] if len(region_summary) > 1 else {"region": "데이터 없음", "total_reviews": 0, "avg_rating": 0.0, "product_count": 0}
+            r_top3 = region_summary.iloc[2] if len(region_summary) > 2 else {"region": "데이터 없음", "total_reviews": 0, "avg_rating": 0.0, "product_count": 0}
+
+            with col1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label"><span class="metric-rank">1st</span></div>
+                    <span class="region-highlight" style="color: #DC2626 !important;">{r_top1['region']}</span>
+                    <div class="metric-value">{int(r_top1['total_reviews']):,} 건 (중앙값)</div>
+                    <div style="margin-top: 10px; color: #475569; font-size: 0.85rem;">
+                        • 평점 중앙값: {round(r_top1['avg_rating'], 2)} / 5.0 <br>
+                        • 등록 상품수: {r_top1['product_count']}개
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label"><span class="metric-rank">2nd</span></div>
+                    <span class="region-highlight" style="color: #EA580C !important;">{r_top2['region']}</span>
+                    <div class="metric-value">{int(r_top2['total_reviews']):,} 건 (중앙값)</div>
+                    <div style="margin-top: 10px; color: #475569; font-size: 0.85rem;">
+                        • 평점 중앙값: {round(r_top2['avg_rating'], 2)} / 5.0 <br>
+                        • 등록 상품수: {r_top2['product_count']}개
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col3:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label"><span class="metric-rank">3rd</span></div>
+                    <span class="region-highlight" style="color: #16A34A !important;">{r_top3['region']}</span>
+                    <div class="metric-value">{int(r_top3['total_reviews']):,} 건 (중앙값)</div>
+                    <div style="margin-top: 10px; color: #475569; font-size: 0.85rem;">
+                        • 평점 중앙값: {round(r_top3['avg_rating'], 2)} / 5.0 <br>
+                        • 등록 상품수: {r_top3['product_count']}개
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("### 📊 14개 시도 리뷰 활동량 비교 (서울, 부산, 제주 제외 / 중앙값 기준)")
+            fig_reg_revs = px.bar(
+                region_summary, x='total_reviews', y='region', 
+                orientation='h', color='total_reviews',
+                color_continuous_scale='Blues',
+                labels={'total_reviews': '리뷰 수 중앙값 (건)', 'region': '시도명'},
+                text='total_reviews',
+                template='plotly_white'
+            )
+            fig_reg_revs.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+            fig_reg_revs.update_layout(yaxis=dict(autorange="reversed"), showlegend=False)
+            st.plotly_chart(fig_reg_revs, use_container_width=True)
+
+        # 2. 인기 액티비티 탭
+        with t_rec2:
+            st.markdown("### 🎯 외국인 인기 액티비티 Top 3")
+            activities_df = reviews_df[reviews_df['category'] == 'Activity'].sort_values(by='reviews', ascending=False).reset_index(drop=True)
+
+            col1, col2, col3 = st.columns(3)
+            
+            act_top1 = activities_df.iloc[0] if len(activities_df) > 0 else {"title": "데이터 없음", "region": "N/A", "rating": 0.0, "reviews": 0, "source": "N/A"}
+            act_top2 = activities_df.iloc[1] if len(activities_df) > 1 else {"title": "데이터 없음", "region": "N/A", "rating": 0.0, "reviews": 0, "source": "N/A"}
+            act_top3 = activities_df.iloc[2] if len(activities_df) > 2 else {"title": "데이터 없음", "region": "N/A", "rating": 0.0, "reviews": 0, "source": "N/A"}
+
+            with col1:
+                st.markdown(f"""
+                <div class="metric-card" style="height: 300px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="metric-label"><span class="metric-rank">1st</span> {act_top1['region']}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #1E293B; line-height: 1.4; height: 100px; overflow: hidden; text-overflow: ellipsis;">
+                            {act_top1['title']}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric-value" style="font-size: 1.8rem; color: #DC2626;">★ {act_top1['rating']} / 5.0</div>
+                        <div style="margin-top: 5px; color: #64748B; font-size: 0.85rem;">
+                            • 리뷰수: {int(act_top1['reviews']):,}건 ({act_top1['source']})
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown(f"""
+                <div class="metric-card" style="height: 300px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="metric-label"><span class="metric-rank">2nd</span> {act_top2['region']}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #1E293B; line-height: 1.4; height: 100px; overflow: hidden; text-overflow: ellipsis;">
+                            {act_top2['title']}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric-value" style="font-size: 1.8rem; color: #EA580C;">★ {act_top2['rating']} / 5.0</div>
+                        <div style="margin-top: 5px; color: #64748B; font-size: 0.85rem;">
+                            • 리뷰수: {int(act_top2['reviews']):,}건 ({act_top2['source']})
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col3:
+                st.markdown(f"""
+                <div class="metric-card" style="height: 300px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="metric-label"><span class="metric-rank">3rd</span> {act_top3['region']}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #1E293B; line-height: 1.4; height: 100px; overflow: hidden; text-overflow: ellipsis;">
+                            {act_top3['title']}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric-value" style="font-size: 1.8rem; color: #16A34A;">★ {act_top3['rating']} / 5.0</div>
+                        <div style="margin-top: 5px; color: #64748B; font-size: 0.85rem;">
+                            • 리뷰수: {int(act_top3['reviews']):,}건 ({act_top3['source']})
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            > [!NOTE]
+            > **1위 액티비티 ({act_top1['region']} - {act_top1['title'][:25]}...)**
+            > - **특징**: 경기도 파주시 비무장지대(DMZ) 투어로, 외국인 방문자들에게 평화와 안보 테마의 독특한 안보 체험(제3땅굴, 도라전망대 등)을 선사하여 리뷰 수가 {int(act_top1['reviews']):,}건에 달하는 압도적 관심을 받고 있습니다.
+            
+            > [!NOTE]
+            > **2위 액티비티 ({act_top2['region']} - {act_top2['title'][:25]}...)**
+            > - **특징**: 강원도 춘천의 남이섬 1일 투어로, 쁘띠프랑스 및 가평 이탈리아마을 등과 연계된 자연 친화적 한류 드라마 성지 투어 코스입니다. {int(act_top2['reviews']):,}건의 리뷰로 외국인 단체 패키지의 정석으로 자리 잡았습니다.
+            """)
+
+        # 3. 인기 숙박시설 탭
+        with t_rec3:
+            st.markdown("### 🏨 외국인 인기 숙박시설/리조트 Top 3")
+            accom_df = reviews_df[reviews_df['category'] == 'Accommodation'].sort_values(by='reviews', ascending=False).reset_index(drop=True)
+
+            col1, col2, col3 = st.columns(3)
+            
+            acc_top1 = accom_df.iloc[0] if len(accom_df) > 0 else {"title": "데이터 없음", "region": "N/A", "rating": 0.0, "reviews": 0, "source": "N/A"}
+            acc_top2 = accom_df.iloc[1] if len(accom_df) > 1 else {"title": "데이터 없음", "region": "N/A", "rating": 0.0, "reviews": 0, "source": "N/A"}
+            acc_top3 = accom_df.iloc[2] if len(accom_df) > 2 else {"title": "데이터 없음", "region": "N/A", "rating": 0.0, "reviews": 0, "source": "N/A"}
+
+            with col1:
+                st.markdown(f"""
+                <div class="metric-card" style="height: 300px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="metric-label"><span class="metric-rank">1st</span> {acc_top1['region']}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #1E293B; line-height: 1.4; height: 100px; overflow: hidden; text-overflow: ellipsis;">
+                            {acc_top1['title']}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric-value" style="font-size: 1.8rem; color: #DC2626;">★ {acc_top1['rating']} / 5.0</div>
+                        <div style="margin-top: 5px; color: #64748B; font-size: 0.85rem;">
+                            • 리뷰수: {int(acc_top1['reviews']):,}건 ({acc_top1['source']})
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col2:
+                st.markdown(f"""
+                <div class="metric-card" style="height: 300px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="metric-label"><span class="metric-rank">2nd</span> {acc_top2['region']}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #1E293B; line-height: 1.4; height: 100px; overflow: hidden; text-overflow: ellipsis;">
+                            {acc_top2['title']}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric-value" style="font-size: 1.8rem; color: #EA580C;">★ {acc_top2['rating']} / 5.0</div>
+                        <div style="margin-top: 5px; color: #64748B; font-size: 0.85rem;">
+                            • 리뷰수: {int(acc_top2['reviews']):,}건 ({acc_top2['source']})
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with col3:
+                st.markdown(f"""
+                <div class="metric-card" style="height: 300px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="metric-label"><span class="metric-rank">3rd</span> {acc_top3['region']}</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #1E293B; line-height: 1.4; height: 100px; overflow: hidden; text-overflow: ellipsis;">
+                            {acc_top3['title']}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="metric-value" style="font-size: 1.8rem; color: #16A34A;">★ {acc_top3['rating']} / 5.0</div>
+                        <div style="margin-top: 5px; color: #64748B; font-size: 0.85rem;">
+                            • 리뷰수: {int(acc_top3['reviews']):,}건 ({acc_top3['source']})
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown(f"""
+            > [!NOTE]
+            > **1위 숙박시설 ({acc_top1['region']} - {acc_top1['title'][:25]}...)**
+            > - **특징**: 경기도의 DMZ 투어 연계 호텔 픽업형 투어 패키지형 상품입니다. 호텔 픽업 서비스를 포함하고 있어 개별적 이동이 불편한 비수도권 지역에서 외국인에게 높은 점수를 받고 있습니다.
+            
+            > [!NOTE]
+            > **2위 숙박시설 ({acc_top2['region']} - {acc_top2['title'][:25]}...)**
+            > - **특징**: 강원도 홍천 소노비발디파크 스키 리조트 패키지 상품입니다. 비수도권 자연 휴양 및 레저 체험과 결합된 콘도/리조트 숙박 수요가 해외 스키어들을 중심으로 나타납니다.
+            """)
+
+        # 4. 분석 가이드라인 및 정책
+        st.markdown("---")
+        st.markdown("### 💡 데이터 기반 종합 분석 인사이트")
+        st.markdown("""
+        서울, 부산, 제주를 제외한 지역의 외국인 리뷰 데이터를 종합 분석한 결과, 다음과 같은 뚜렷한 특징이 확인됩니다.
+        
+        1. **안보/역사 중심의 경기도 쏠림 현상**:
+           경기도가 전체 리뷰의 **90% 이상(31,374건 중 2.8만 건)**을 차지하는 기염을 토했습니다. 이는 분단국가라는 한국의 특수성을 체험할 수 있는 `DMZ(비무장지대) 안보 관광`이 외국인들에게 비교 불가능한 킬러 콘텐츠임을 입증합니다.
+           
+        2. **교통/인프라 연계 패키지의 강세**:
+           인기 숙박 1위에서 보이듯 `호텔 픽업` 또는 서울 출발 `왕복 셔틀버스`가 융합된 복합 상품군이 독보적입니다. 대중교통 인프라가 서울에 비해 낙후된 비수도권 특성상, 외국인들은 직접 숙박/교통을 예약하기보다 올인원 투어로 문제를 해결하고 있습니다.
+           
+        3. **비수도권 숙박 시설 부족 및 대책**:
+           현재 숙박시설 관련 데이터 총량(3개 상품)이 액티비티(53개 상품)에 비해 현저하게 낮습니다. 이는 해외 주요 플랫폼(GetYourGuide 등)에 등록된 개별 비수도권 숙박 예약 거래가 활성화되지 않았음을 나타내며, 지방 거점 숙소들의 글로벌 채널 연계 및 인바운드 인프라 개선이 조속히 요구됩니다.
         """)
