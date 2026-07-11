@@ -721,7 +721,11 @@ def build_age_dataframes():
         for i, age in enumerate(AGE_LABELS):
             grp = GRP_YOUNG_LABEL if i < 4 else GRP_OLD_LABEL
             # ★ 핵심: 모든 API 및 크롤링 데이터의 기준을 통일한 중앙값(visit_map / interest_map)으로 모든 결과 산출
-            base_vis = visit_map.get(region, 0.0)
+            # 방문도는 연령그룹별 특화 지수(YOUNG_VISIT_BASE / OLD_VISIT_BASE)를 반영
+            if grp == GRP_YOUNG_LABEL:
+                base_vis = YOUNG_VISIT_BASE.get(region, 0.0)
+            else:
+                base_vis = OLD_VISIT_BASE.get(region, 0.0)
             rows_int.append({
                 "지역": region, "연령대": age,
                 "관심도지수": round(base_int * ir[i], 2),
@@ -1131,13 +1135,12 @@ elif active_page == "visit":
     tab1, tab2, tab3 = st.tabs(["📊 지역별 연령대 비교", "🌡️ 히트맵 분석", "📈 지역 상세 분석"])
 
     with tab1:
-        # 연령대별 상위권 방문도 순위 분할 (통합 중앙값 visit_map 기준)
+        # 연령대별 상위권 방문도 순위 분할 (청년/중장년 특화 베이스 기준)
         rows_y_vis = []
         rows_o_vis = []
         for reg in REGIONS:
-            base_v = visit_map.get(reg, 0.0)
-            vis_y = base_v * sum(AGE_VISIT_RATIO[reg][0:4])
-            vis_o = base_v * sum(AGE_VISIT_RATIO[reg][4:7])
+            vis_y = YOUNG_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+            vis_o = OLD_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
             rows_y_vis.append({"region": reg, "score": round(vis_y, 1)})
             rows_o_vis.append({"region": reg, "score": round(vis_o, 1)})
 
@@ -1285,12 +1288,7 @@ elif active_page == "visit":
         st.markdown("#### 📈 지역 선택 — 연령대별 방문도 상세 분석")
         sel_region_vis = st.selectbox("지역 선택", REGIONS, key="vis_detail")
 
-        base_v = visit_map.get(sel_region_vis, 0.0)
-        rows_sel = []
-        for i, age_label in enumerate(AGE_LABELS):
-            grp = GRP_YOUNG_LABEL if i < 4 else GRP_OLD_LABEL
-            rows_sel.append({"지역": sel_region_vis, "연령대": age_label, "연령그룹": grp, "방문도지수": base_v * AGE_VISIT_RATIO[sel_region_vis][i]})
-        df_sel_vis = pd.DataFrame(rows_sel)
+        df_sel_vis = df_visit[df_visit["지역"] == sel_region_vis].copy()
         
         grp_sum = df_sel_vis.groupby("연령그룹")["방문도지수"].sum()
         total_v = grp_sum.sum()
@@ -1383,9 +1381,8 @@ elif active_page == "vs":
         rows_y_i.append({"region": reg, "score": round(int_y, 1)})
         rows_o_i.append({"region": reg, "score": round(int_o, 1)})
 
-        base_v = visit_map.get(reg, 0.0)
-        vis_y = base_v * sum(AGE_VISIT_RATIO[reg][0:4])
-        vis_o = base_v * sum(AGE_VISIT_RATIO[reg][4:7])
+        vis_y = YOUNG_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+        vis_o = OLD_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
         rows_y_v.append({"region": reg, "score": round(vis_y, 1)})
         rows_o_v.append({"region": reg, "score": round(vis_o, 1)})
 

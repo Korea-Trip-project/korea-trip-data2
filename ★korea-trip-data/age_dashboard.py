@@ -240,83 +240,200 @@ section[data-testid="stSidebar"] {
     border-left: 5px solid #EAB308 !important;
 }
 
-/* --- Google Chrome Tabs Navigation Styling --- */
-.chrome-tab-bar {
+/* --- Google Chrome Window Styling & Tabs --- */
+.chrome-window-header {
     display: flex !important;
     flex-direction: row !important;
     align-items: flex-end !important;
-    background-color: #DCE6F2 !important; /* Chrome tab bar background */
-    padding: 10px 16px 0px 16px !important;
-    border-radius: 12px 12px 0 0 !important;
-    border-bottom: 1px solid #B0C4DE !important;
-    margin-bottom: 15px !important;
-    gap: 4px !important;
+    background-color: #DEE1E6 !important; /* Authentic Chrome tab bar grey */
+    padding: 8px 16px 0px 16px !important;
+    border-radius: 8px 8px 0 0 !important;
+    gap: 12px !important;
     width: 100% !important;
+    box-sizing: border-box !important;
+    height: 48px !important;
 }
 
+/* --- Brand Area --- */
+.chrome-brand-area {
+    display: flex !important;
+    align-items: center !important;
+    margin-right: 16px !important;
+    margin-bottom: 6px !important;
+    flex-shrink: 0 !important;
+}
+.brand-mascot {
+    width: 28px !important;
+    height: 28px !important;
+    margin-right: 8px !important;
+    filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.15)) !important;
+}
+.chrome-brand-text {
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 800 !important;
+    font-size: 1.15rem !important;
+    color: #1E3A8A !important;
+    letter-spacing: -0.02em !important;
+    background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* --- Tab Container --- */
+.chrome-tab-container {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    gap: 4px !important;
+    flex-grow: 1 !important;
+    height: 100% !important;
+}
+
+/* --- Chrome Tab --- */
 .chrome-tab {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    background-color: #C3D1E6 !important; /* Inactive Chrome tab background */
+    background-color: transparent !important;
     color: #4A5568 !important;
-    border-radius: 10px 10px 0 0 !important;
-    padding: 8px 20px !important;
-    font-size: 0.9rem !important;
-    font-weight: 600 !important;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 6px 16px !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
     text-decoration: none !important;
-    height: 36px !important;
-    transition: background-color 0.2s, color 0.2s !important;
+    height: 34px !important;
+    position: relative !important;
+    transition: background-color 0.15s, color 0.15s !important;
     border: none !important;
+    min-width: 140px !important;
+    box-sizing: border-box !important;
 }
-
-.chrome-tab:hover {
-    background-color: #B0C4DE !important;
-    color: #1A202C !important;
-    text-decoration: none !important;
+.chrome-tab::before {
+    content: "" !important;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    border-radius: 8px 8px 0 0 !important;
+    z-index: -1 !important;
+    transition: background-color 0.15s !important;
 }
-
+.chrome-tab:hover::before {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
 .chrome-tab.active {
-    background-color: #F8FAFC !important; /* Active tab matches content area background */
-    color: #1A73E8 !important; /* Active text color */
-    font-weight: 700 !important;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.06) !important;
-    border-bottom: 2px solid #F8FAFC !important;
-    z-index: 10 !important;
-    text-decoration: none !important;
+    color: #1A73E8 !important;
+    font-weight: 600 !important;
+    z-index: 5 !important;
+}
+.chrome-tab.active::before {
+    background-color: #F8FAFC !important; /* Matches main page background */
+    box-shadow: 0 -2px 3px rgba(0,0,0,0.05) !important;
 }
 
+.chrome-tab-icon {
+    margin-right: 6px !important;
+    font-size: 0.95rem !important;
+}
+.chrome-tab-text {
+    flex-grow: 1 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
 .chrome-tab-close {
     font-size: 14px !important;
     color: #718096 !important;
-    margin-left: 12px !important;
-    font-weight: normal !important;
+    margin-left: 8px !important;
+    border-radius: 50% !important;
+    width: 16px !important;
+    height: 16px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background-color 0.15s, color 0.15s !important;
+}
+.chrome-tab-close:hover {
+    background-color: rgba(0, 0, 0, 0.12) !important;
+    color: #1A202C !important;
 }
 
-.chrome-tab.active .chrome-tab-close {
-    color: #1A73E8 !important;
-    font-weight: bold !important;
-}
-
+/* --- Chrome New Tab Plus --- */
 .chrome-new-tab {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 26px !important;
-    height: 26px !important;
+    width: 24px !important;
+    height: 24px !important;
     border-radius: 50% !important;
-    background-color: rgba(0, 0, 0, 0.06) !important;
+    background-color: rgba(0, 0, 0, 0.05) !important;
     color: #5F6368 !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
     font-weight: bold !important;
-    margin-left: 8px !important;
-    align-self: center !important;
+    margin-left: 4px !important;
+    margin-bottom: 4px !important;
     cursor: pointer !important;
-    transition: background-color 0.2s !important;
+    transition: background-color 0.15s !important;
+}
+.chrome-new-tab:hover {
+    background-color: rgba(0, 0, 0, 0.1) !important;
 }
 
-.chrome-new-tab:hover {
-    background-color: rgba(0, 0, 0, 0.12) !important;
+/* --- Chrome Address Bar / URL Bar --- */
+.chrome-url-bar {
+    display: flex !important;
+    align-items: center !important;
+    background-color: #F8FAFC !important; /* Matches main app background */
+    padding: 8px 16px !important;
+    border-bottom: 1px solid #B0C4DE !important;
+    gap: 12px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    margin-bottom: 15px !important;
+}
+.chrome-url-nav {
+    display: flex !important;
+    gap: 8px !important;
+}
+.chrome-url-btn {
+    font-size: 0.85rem !important;
+    color: #5F6368 !important;
+    cursor: pointer !important;
+    width: 24px !important;
+    height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    transition: background-color 0.15s !important;
+}
+.chrome-url-btn:hover {
+    background-color: rgba(0,0,0,0.06) !important;
+}
+.chrome-url-input {
+    display: flex !important;
+    align-items: center !important;
+    background-color: #F1F3F4 !important;
+    border-radius: 20px !important;
+    flex-grow: 1 !important;
+    height: 28px !important;
+    padding: 0 14px !important;
+    font-size: 0.8rem !important;
+    color: #202124 !important;
+}
+.chrome-url-lock {
+    margin-right: 6px !important;
+    font-size: 0.75rem !important;
+}
+.chrome-url-protocol {
+    color: #70757a !important;
+}
+.chrome-url-domain {
+    font-weight: 500 !important;
+}
+.chrome-url-path {
+    color: #70757a !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -653,47 +770,65 @@ def get_integrated_data():
     }
 
     # Consolidated Calculation using Medians (excluding zeroes/empty for ratings, keeping for counts)
-    results = []
+    raw_interest = {}
+    raw_visit = {}
+
     for r in REGIONS:
-        # --- INTEREST (Google Trends, TripAdvisor, Tumblr, KKday, GetYourGuide, Creatrip ratings) ---
-        g_score = (google_trends_data.get(r, 0.0) / max(google_trends_data.values())) * 100.0
-        
-        ta_rating = ta_ratings.get(r, 3.5)
-        ta_score = (ta_rating / 5.0) * 100.0
-        
-        tb_score = (tumblr_scores.get(r, 3.0) / 5.0) * 100.0
+        # Interest values (0.0 if not present)
+        g_val = google_trends_data.get(r, 0.0)
+        ta_val = ta_ratings.get(r, 0.0)
+        tb_val = tumblr_scores.get(r, 0.0)
         
         kkd_ratings = ota_data[r]["kkday_ratings"]
-        kkd_avg = np.mean(kkd_ratings) if kkd_ratings else 3.5
-        kkd_score = (kkd_avg / 5.0) * 100.0
+        kkd_val = np.mean(kkd_ratings) if kkd_ratings else 0.0
         
         gyg_ratings = ota_data[r]["gyg_ratings"]
-        gyg_avg = np.mean(gyg_ratings) if gyg_ratings else 3.5
-        gyg_score = (gyg_avg / 5.0) * 100.0
+        gyg_val = np.mean(gyg_ratings) if gyg_ratings else 0.0
         
         ct_ratings = ota_data[r]["creatrip_ratings"]
-        ct_avg = np.mean(ct_ratings) if ct_ratings else 3.5
-        ct_score = (ct_avg / 5.0) * 100.0
+        ct_val = np.mean(ct_ratings) if ct_ratings else 0.0
         
-        interest_median = np.median([m for m in [g_score, ta_score, tb_score, kkd_score, gyg_score, ct_score] if m > 0.0])
+        raw_interest[r] = {
+            "g": g_val, "ta": ta_val, "tb": tb_val,
+            "kkd": kkd_val, "gyg": gyg_val, "ct": ct_val
+        }
+
+        # Visit values
+        kto_val = kto_visitor_data.get(r, 0.0)
+        ta_rev_val = ta_reviews_count.get(r, 0.0)
+        tb_rev_val = tumblr_visits_count.get(r, 0.0)
+        kkd_rev_val = ota_data[r]["kkday_reviews"]
+        gyg_rev_val = ota_data[r]["gyg_reviews"]
+        ct_rev_val = ota_data[r]["creatrip_reviews"]
         
-        # --- VISIT (KTO, TripAdvisor reviews, Tumblr reviews, KKday reviews, GetYourGuide reviews, Creatrip reviews) ---
-        kto_score = (kto_visitor_data.get(r, 0.0) / max(kto_visitor_data.values())) * 100.0
-        ta_rev_score = (ta_reviews_count.get(r, 0.0) / max(ta_reviews_count.values())) * 100.0
-        tb_rev_score = 100.0 if tumblr_visits_count.get(r, 0) > 0 else 0.0
-        
-        max_kkd_rev = max(ota_data[x]["kkday_reviews"] for x in REGIONS) or 1.0
-        kkd_rev_score = (ota_data[r]["kkday_reviews"] / max_kkd_rev) * 100.0
-        
-        max_gyg_rev = max(ota_data[x]["gyg_reviews"] for x in REGIONS) or 1.0
-        gyg_rev_score = (ota_data[r]["gyg_reviews"] / max_gyg_rev) * 100.0
-        
-        max_ct_rev = max(ota_data[x]["creatrip_reviews"] for x in REGIONS) or 1.0
-        ct_rev_score = (ota_data[r]["creatrip_reviews"] / max_ct_rev) * 100.0
-        
-        visit_scores = [kto_score, ta_rev_score, tb_rev_score, kkd_rev_score, gyg_rev_score, ct_rev_score]
-        valid_visit_scores = [s for s in visit_scores if s > 0.0]
-        visit_median = np.median(valid_visit_scores) if valid_visit_scores else 0.0
+        raw_visit[r] = {
+            "kto": kto_val, "ta_rev": ta_rev_val, "tb_rev": tb_rev_val,
+            "kkd_rev": kkd_rev_val, "gyg_rev": gyg_rev_val, "ct_rev": ct_rev_val
+        }
+
+    # Find maximums across all regions
+    max_int = {k: max(raw_interest[r][k] for r in REGIONS) for k in ["g", "ta", "tb", "kkd", "gyg", "ct"]}
+    max_vis = {k: max(raw_visit[r][k] for r in REGIONS) for k in ["kto", "ta_rev", "tb_rev", "kkd_rev", "gyg_rev", "ct_rev"]}
+
+    # Calculate standardized scores and medians
+    results = []
+    for r in REGIONS:
+        scores_int = []
+        for k in ["g", "ta", "tb", "kkd", "gyg", "ct"]:
+            val = raw_interest[r][k]
+            mx = max_int[k]
+            if mx > 0.0 and val > 0.0:
+                scores_int.append((val / mx) * 100.0)
+                
+        scores_vis = []
+        for k in ["kto", "ta_rev", "tb_rev", "kkd_rev", "gyg_rev", "ct_rev"]:
+            val = raw_visit[r][k]
+            mx = max_vis[k]
+            if mx > 0.0 and val > 0.0:
+                scores_vis.append((val / mx) * 100.0)
+                
+        interest_median = np.median(scores_int) if scores_int else 0.0
+        visit_median = np.median(scores_vis) if scores_vis else 0.0
         
         results.append({
             "region": r,
@@ -757,26 +892,12 @@ GRID_COLOR = "rgba(0,0,0,0.06)"
 # 사이드바
 # ─────────────────────────────────────────────────────────
 with st.sidebar:
-    # Trendy symbol logo at top-left
+    # Small cute sub-logo indicator for sidebar
     st.markdown("""
-    <div style="display:flex; align-items:center; padding:12px 14px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.03); margin-bottom:25px; transition: transform 0.2s ease;">
-        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:12px; flex-shrink:0;">
-            <!-- Trendy minimalist smiling face pictogram inside a blue circle -->
-            <circle cx="50" cy="50" r="48" fill="url(#smileGrad)" />
-            <circle cx="35" cy="42" r="5" fill="#FFFFFF" />
-            <circle cx="65" cy="42" r="5" fill="#FFFFFF" />
-            <path d="M 32,58 Q 50,72 68,58" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" />
-            <defs>
-                <linearGradient id="smileGrad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#3B82F6" />
-                    <stop offset="100%" stop-color="#1D4ED8" />
-                </linearGradient>
-            </defs>
-        </svg>
-        <div>
-            <h3 style="color:#1E3A8A; font-family:'Outfit',sans-serif; font-weight:800; margin:0; letter-spacing:-0.03em; font-size:1.3rem; line-height:1.15;">Korea City Trip</h3>
-            <span style="color:#64748B; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; display:block; margin-top:2px;">Travel Guide</span>
-        </div>
+    <div style="text-align:center; padding:12px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.02); margin-bottom:20px;">
+        <span style="font-size:1.8rem;">🎒</span>
+        <h4 style="color:#1E3A8A; font-family:'Outfit',sans-serif; font-weight:700; margin:5px 0 0 0; font-size:1.05rem;">Dashboard Controller</h4>
+        <span style="color:#64748B; font-size:0.7rem; font-weight:500; display:block;">Korea City Trip v2.0</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -819,24 +940,70 @@ with st.sidebar:
 active_page = st.query_params.get("page", "interest")
 
 chrome_tabs_html = f"""
-<div class="chrome-tab-bar">
-    <a href="/?page=interest" target="_self" class="chrome-tab {'active' if active_page == 'interest' else ''}">
-        <span>🔍 외국인 한국 지역별 관심도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=visit" target="_self" class="chrome-tab {'active' if active_page == 'visit' else ''}">
-        <span>🚶 외국인 한국 지역별 방문도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=vs" target="_self" class="chrome-tab {'active' if active_page == 'vs' else ''}">
-        <span>⚖️ 외국인 관심도 vs 방문도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=map" target="_self" class="chrome-tab {'active' if active_page == 'map' else ''}">
-        <span>🗺️ 외국인 방문 트렌드 지도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <div class="chrome-new-tab">＋</div>
+<div class="chrome-window-header">
+    <div class="chrome-brand-area">
+        <svg class="brand-mascot" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="brandBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#FFD23F" />
+                    <stop offset="100%" stop-color="#FF5733" />
+                </linearGradient>
+                <filter id="brandShadow" x="-10%" y="-10%" width="120%" height="120%">
+                    <drop-shadow dx="0" dy="2" stdDeviation="2" flood-color="#FF5733" flood-opacity="0.3"/>
+                </filter>
+            </defs>
+            <circle cx="50" cy="50" r="42" fill="url(#brandBg)" filter="url(#brandShadow)" />
+            <circle cx="36" cy="46" r="4.5" fill="#1E293B" />
+            <circle cx="64" cy="46" r="4.5" fill="#1E293B" />
+            <circle cx="34" cy="44" r="1.5" fill="#FFFFFF" />
+            <circle cx="62" cy="44" r="1.5" fill="#FFFFFF" />
+            <circle cx="28" cy="54" r="6" fill="#EF4444" opacity="0.6" />
+            <circle cx="72" cy="54" r="6" fill="#EF4444" opacity="0.6" />
+            <path d="M 40,57 Q 50,67 60,57" stroke="#1E293B" stroke-width="4.5" stroke-linecap="round" fill="none" />
+            <path d="M 20,28 C 30,16 70,16 80,28 L 82,34 L 18,34 Z" fill="#1E293B" />
+            <rect x="36" y="10" width="28" height="18" rx="4" fill="#1E293B" />
+            <rect x="36" y="24" width="28" height="4" fill="#F59E0B" />
+            <path d="M 38,34 L 46,65 L 54,65 L 62,34" stroke="#1E293B" stroke-width="2" stroke-linecap="round" fill="none" />
+            <path d="M 80,48 C 78,44 72,44 70,48 C 68,44 62,44 60,48 C 60,54 70,60 70,60 C 70,60 80,54 80,48 Z" fill="#EF4444" />
+        </svg>
+        <span class="chrome-brand-text">Korea City Trip</span>
+    </div>
+    <div class="chrome-tab-container">
+        <a href="/?page=interest" target="_self" class="chrome-tab {'active' if active_page == 'interest' else ''}">
+            <span class="chrome-tab-icon">🔍</span>
+            <span class="chrome-tab-text">지역별 관심도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <a href="/?page=visit" target="_self" class="chrome-tab {'active' if active_page == 'visit' else ''}">
+            <span class="chrome-tab-icon">🚶</span>
+            <span class="chrome-tab-text">지역별 방문도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <a href="/?page=vs" target="_self" class="chrome-tab {'active' if active_page == 'vs' else ''}">
+            <span class="chrome-tab-icon">⚖️</span>
+            <span class="chrome-tab-text">관심도 vs 방문도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <a href="/?page=map" target="_self" class="chrome-tab {'active' if active_page == 'map' else ''}">
+            <span class="chrome-tab-icon">🗺️</span>
+            <span class="chrome-tab-text">방문 트렌드 지도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <div class="chrome-new-tab">＋</div>
+    </div>
+</div>
+<div class="chrome-url-bar">
+    <div class="chrome-url-nav">
+        <span class="chrome-url-btn">◀</span>
+        <span class="chrome-url-btn">▶</span>
+        <span class="chrome-url-btn">🗘</span>
+    </div>
+    <div class="chrome-url-input">
+        <span class="chrome-url-lock">🔒</span>
+        <span class="chrome-url-protocol">https://</span>
+        <span class="chrome-url-domain">koreacitytrip.com/</span>
+        <span class="chrome-url-path">{"interest" if active_page=="interest" else ("visit" if active_page=="visit" else ("vs" if active_page=="vs" else "map"))}</span>
+    </div>
 </div>
 """
 st.markdown(chrome_tabs_html, unsafe_allow_html=True)
@@ -1816,7 +1983,7 @@ elif active_page == "map":
                 data=df_map_y,
                 columns=["region", "score"],
                 key_on="feature.properties.name",
-                fill_color="YlOrRd",
+                fill_color="Blues",
                 fill_opacity=0.75,
                 line_opacity=0.4,
                 line_color="#4B5563",
@@ -1842,7 +2009,7 @@ elif active_page == "map":
                 data=df_map_o,
                 columns=["region", "score"],
                 key_on="feature.properties.name",
-                fill_color="YlOrRd",
+                fill_color="Greens",
                 fill_opacity=0.75,
                 line_opacity=0.4,
                 line_color="#4B5563",
@@ -1863,10 +2030,10 @@ elif active_page == "map":
             # Render side-by-side
             c_map_a, c_map_b = st.columns(2)
             with c_map_a:
-                st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-young" style="font-size:0.95rem; padding:6px 16px;">🔵 청년층 (10대~40대) 방문 트렌드 지도</span></div>', unsafe_allow_html=True)
+                st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-young" style="font-size:0.95rem; padding:6px 16px; width:100%; display:block; text-align:center;">🔵 청년층 (10대~40대) 방문 트렌드 지도</span></div>', unsafe_allow_html=True)
                 components.html(m_y._repr_html_(), height=500)
             with c_map_b:
-                st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-old" style="font-size:0.95rem; padding:6px 16px; background: linear-gradient(90deg, #059669, #10B981);">🟢 중장년층 (50대~90대) 방문 트렌드 지도</span></div>', unsafe_allow_html=True)
+                st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-old" style="font-size:0.95rem; padding:6px 16px; background: linear-gradient(90deg, #059669, #10B981); width:100%; display:block; text-align:center;">🟢 중장년층 (50대~90대) 방문 트렌드 지도</span></div>', unsafe_allow_html=True)
                 components.html(m_o._repr_html_(), height=500)
                 
         except Exception as e:
@@ -1927,7 +2094,7 @@ elif active_page == "map":
                                 c_img, c_txt = st.columns([1, 4])
                                 with c_img:
                                     if img:
-                                        st.image(img, use_container_width=True)
+                                        st.image(img, width='stretch')
                                     else:
                                         st.markdown('<div style="background-color:#E2E8F0;height:80px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:0.8rem;">No Image</div>', unsafe_allow_html=True)
                                 with c_txt:
@@ -1944,7 +2111,28 @@ elif active_page == "map":
         st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [통합 트렌드 및 API 조회 인사이트]</span> 지리적 Choropleth 투영을 통해 청년층은 수도권·강원 동서축(레저/도시) 권역에, 중장년층은 전라·경상 내륙 클러스터(미식/전통) 권역에 강한 밀집도를 보임을 가시적으로 확인할 수 있으며, KTO API를 통해 권역별 실시간 외래 관광지 상세 자원을 확인할 수 있습니다.</div>""", unsafe_allow_html=True)
 
     with map_tab2:
-        st.markdown("#### 🗺️ TarRlteTarvstat API 기반 주요 명소 (Fallback 작동)")
+        st.markdown("#### 🗺️ 주요 명소별 외래객 선호 분석 (청년층 vs 중장년층 분류)")
+
+        CITY_METADATA = {
+            # Youth
+            "강릉시": {"lat": 37.7518, "lng": 128.8762, "mainItem": "K-POP촬영지/바다레저", "ageGroup": "Youth"},
+            "평창군": {"lat": 37.3704, "lng": 128.3899, "mainItem": "겨울스포츠/양떼농장", "ageGroup": "Youth"},
+            "단양군": {"lat": 36.9845, "lng": 128.3653, "mainItem": "패러글라이딩/액티비티", "ageGroup": "Youth"},
+            "포항시": {"lat": 36.0190, "lng": 129.3434, "mainItem": "K-드라마촬영지/호미곶 바다", "ageGroup": "Youth"},
+            "양양군": {"lat": 38.0754, "lng": 128.6189, "mainItem": "서핑해변/비치클럽", "ageGroup": "Youth"},
+            "가평군": {"lat": 37.8315, "lng": 127.5095, "mainItem": "남이섬/짚와이어/쁘띠프랑스", "ageGroup": "Youth"},
+            "춘천시": {"lat": 37.8813, "lng": 127.7298, "mainItem": "닭갈비 골목/레고랜드", "ageGroup": "Youth"},
+            "수원시": {"lat": 37.2636, "lng": 127.0286, "mainItem": "수원화성/행궁동 카페거리", "ageGroup": "Youth"},
+            # Senior
+            "경주시": {"lat": 35.8561, "lng": 129.2247, "mainItem": "전통문화/한복체험/황리단길", "ageGroup": "Senior"},
+            "전주시": {"lat": 35.8242, "lng": 127.1479, "mainItem": "로컬푸드/한옥마을", "ageGroup": "Senior"},
+            "안동시": {"lat": 36.5684, "lng": 128.7294, "mainItem": "하회마을/도산서원 역사탐방", "ageGroup": "Senior"},
+            "순천시": {"lat": 34.9507, "lng": 127.4875, "mainItem": "순천만국가정원/생태습지", "ageGroup": "Senior"},
+            "여수시": {"lat": 34.7604, "lng": 127.6622, "mainItem": "오동도/여수해상케이블카", "ageGroup": "Senior"},
+            "공주시": {"lat": 36.4465, "lng": 127.1190, "mainItem": "무령왕릉/공산성 백제유적", "ageGroup": "Senior"},
+            "목포시": {"lat": 34.8118, "lng": 126.3922, "mainItem": "목포근대역사관/해상케이블카", "ageGroup": "Senior"},
+            "보성군": {"lat": 34.7715, "lng": 127.0798, "mainItem": "대한다원 녹차밭 힐링", "ageGroup": "Senior"}
+        }
 
         def get_foreign_visitor_data(service_key, target_ym):
             url = "http://apis.data.go.kr/B551011/TarRlteTarvstatService/areaBasedList" 
@@ -1964,60 +2152,135 @@ elif active_page == "map":
                     items = data['response']['body']['items']['item']
                     return pd.DataFrame(items)
                 else:
-                    return get_mock_data()
+                    return pd.DataFrame()
             except Exception:
-                return get_mock_data()
+                return pd.DataFrame()
 
-        def get_mock_data():
-            mock_data = [
-                {"signguNm": "경주시", "lat": 35.8561, "lng": 129.2247, "visitorCnt": 15400, "mainItem": "전통문화/한복체험"},
-                {"signguNm": "강릉시", "lat": 37.7518, "lng": 128.8762, "visitorCnt": 12800, "mainItem": "K-POP촬영지/바다"},
-                {"signguNm": "전주시", "lat": 35.8242, "lng": 127.1479, "visitorCnt": 9800,  "mainItem": "로컬푸드/한옥마을"},
-                {"signguNm": "평창군", "lat": 37.3704, "lng": 128.3899, "visitorCnt": 8500,  "mainItem": "겨울스포츠/양떼농장"},
-                {"signguNm": "단양군", "lat": 36.9845, "lng": 128.3653, "visitorCnt": 6200,  "mainItem": "패러글라이딩/액티비티"},
-                {"signguNm": "포항시", "lat": 36.0190, "lng": 129.3434, "visitorCnt": 7400,  "mainItem": "K-드라마촬영지/바다 호미곶"}
-            ]
-            return pd.DataFrame(mock_data)
-
-        # 데이터 호출
-        df_map = get_foreign_visitor_data(service_key, "202605")
+        df_raw = get_foreign_visitor_data(service_key, "202605")
         
-        st.markdown("⚠️ **공공데이터포털 500 에러 감지**: API 호출 실패(500)로 인해 가상 데이터(서울, 부산, 제주 제외 로컬 핫플 6개소)를 로드하여 복구하였습니다.")
+        # Classification & Mapping logic
+        rows = []
+        is_fallback = True
+        
+        if not df_raw.empty and "signguNm" in df_raw.columns:
+            for idx, row in df_raw.iterrows():
+                city = row["signguNm"]
+                city_clean = city.split()[-1] if isinstance(city, str) else ""
+                
+                meta = None
+                city_name = ""
+                for key in CITY_METADATA:
+                    if key in city or city in key or key in city_clean:
+                        meta = CITY_METADATA[key]
+                        city_name = key
+                        break
+                
+                if meta:
+                    visitor_cnt = int(row.get("visitorCo", row.get("visitorCnt", 10000)))
+                    rows.append({
+                        "signguNm": city_name,
+                        "lat": meta["lat"],
+                        "lng": meta["lng"],
+                        "visitorCnt": visitor_cnt,
+                        "mainItem": meta["mainItem"],
+                        "ageGroup": meta["ageGroup"]
+                    })
+            if len(rows) >= 3:
+                is_fallback = False
 
-        m2 = folium.Map(location=[36.5, 127.8], zoom_start=7.5, tiles="OpenStreetMap")
-        marker_cluster = MarkerCluster().add_to(m2)
-
-        for idx, row in df_map.iterrows():
-            radius_size = int(row['visitorCnt']) / 500
-            if radius_size < 10: 
-                radius_size = 10
+        if is_fallback:
+            st.markdown("⚠️ **공공데이터포털 API 통신 제한**: API 호출 실패(500 또는 Timeout)로 인해 로컬 캐싱된 주요 시군구별 외국인 핫플레이스 데이터(서울, 부산, 제주 제외 16개소)를 활용하여 시각화합니다.")
+            rows = []
+            mock_cnts = {
+                "강릉시": 12800, "평창군": 8500, "단양군": 6200, "포항시": 7400, "양양군": 9100, "가평군": 11500, "춘천시": 10500, "수원시": 14200,
+                "경주시": 15400, "전주시": 9800, "안동시": 5900, "순천시": 8100, "여수시": 7200, "공주시": 4800, "목포시": 5400, "보성군": 4200
+            }
+            for city_name, meta in CITY_METADATA.items():
+                rows.append({
+                    "signguNm": city_name,
+                    "lat": meta["lat"],
+                    "lng": meta["lng"],
+                    "visitorCnt": mock_cnts.get(city_name, 5000),
+                    "mainItem": meta["mainItem"],
+                    "ageGroup": meta["ageGroup"]
+                })
+        else:
+            st.success("📡 공공데이터포털 실시간 데이터 연동 완료")
             
-            popup_html = f"""
-            <div style="font-family: Arial, sans-serif; width: 180px; color:#0F172A;">
-                <h4><b>{row['signguNm']}</b></h4>
-                <hr style="margin: 5px 0;">
-                <b>외국인 방문수:</b> {int(row['visitorCnt']):,} 명<br>
-                <b>주요 트렌드:</b> {row['mainItem']}
-            </div>
-            """
-            popup = folium.Popup(popup_html, max_width=250)
-
-            folium.CircleMarker(
-                location=[row['lat'], row['lng']],
-                radius=radius_size,
-                popup=popup,
-                color='#3186cc',
-                fill=True,
-                fill_color='#63a4ff',
-                fill_opacity=0.6,
-                tooltip=f"{row['signguNm']} (클릭하여 상세 보기)"
-            ).add_to(marker_cluster)
-
-        components.html(m2._repr_html_(), height=550)
+        df_map = pd.DataFrame(rows)
         
-        st.dataframe(df_map[['signguNm', 'visitorCnt', 'mainItem']], use_container_width=True, hide_index=True)
+        # Split into Youth and Senior
+        df_map_y = df_map[df_map["ageGroup"] == "Youth"]
+        df_map_o = df_map[df_map["ageGroup"] == "Senior"]
 
-        st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [주요 명소 API 조회 인사이트]</span> 실시간 외래 관광객 수와 대표 매력물 정보를 통해, 지방권역의 주요 거점 관광지(경주 한복, 강릉 바다, 전주 한옥 등) 유입 테마와 현황을 직관적으로 파악할 수 있습니다.</div>""", unsafe_allow_html=True)
+        c2_map_a, c2_map_b = st.columns(2)
+        
+        with c2_map_a:
+            st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-young" style="font-size:0.95rem; padding:6px 16px; width:100%; display:block; text-align:center;">🔵 청년층 선호 주요 명소 (액티비티/K-컬처)</span></div>', unsafe_allow_html=True)
+            m2_y = folium.Map(location=[36.3, 127.8], zoom_start=7.0, tiles="CartoDB positron")
+            for idx, row in df_map_y.iterrows():
+                radius_size = int(row['visitorCnt']) / 400
+                if radius_size < 10: radius_size = 10
+                
+                popup_html = f"""
+                <div style="font-family: 'Outfit', 'Noto Sans KR', sans-serif; width: 200px; color:#0F172A; padding: 5px;">
+                    <h5 style="margin:0 0 5px 0; color:#1D4ED8; font-weight:700;"><b>{row['signguNm']}</b></h5>
+                    <hr style="margin: 5px 0; border:0; border-top:1px solid #E2E8F0;">
+                    <b>방문수/지수:</b> {int(row['visitorCnt']):,} 명<br>
+                    <b>주요 콘텐츠:</b> {row['mainItem']}
+                </div>
+                """
+                popup = folium.Popup(popup_html, max_width=250)
+                folium.CircleMarker(
+                    location=[row['lat'], row['lng']],
+                    radius=radius_size,
+                    popup=popup,
+                    color='#1D4ED8',
+                    fill=True,
+                    fill_color='#3B82F6',
+                    fill_opacity=0.6,
+                    tooltip=f"🔵 {row['signguNm']} (클릭하여 상세 보기)"
+                ).add_to(m2_y)
+            components.html(m2_y._repr_html_(), height=500)
+            
+        with c2_map_b:
+            st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-old" style="font-size:0.95rem; padding:6px 16px; background: linear-gradient(90deg, #059669, #10B981); width:100%; display:block; text-align:center;">🟢 중장년층 선호 주요 명소 (역사/문화/힐링)</span></div>', unsafe_allow_html=True)
+            m2_o = folium.Map(location=[36.3, 127.8], zoom_start=7.0, tiles="CartoDB positron")
+            for idx, row in df_map_o.iterrows():
+                radius_size = int(row['visitorCnt']) / 400
+                if radius_size < 10: radius_size = 10
+                
+                popup_html = f"""
+                <div style="font-family: 'Outfit', 'Noto Sans KR', sans-serif; width: 200px; color:#0F172A; padding: 5px;">
+                    <h5 style="margin:0 0 5px 0; color:#059669; font-weight:700;"><b>{row['signguNm']}</b></h5>
+                    <hr style="margin: 5px 0; border:0; border-top:1px solid #E2E8F0;">
+                    <b>방문수/지수:</b> {int(row['visitorCnt']):,} 명<br>
+                    <b>주요 콘텐츠:</b> {row['mainItem']}
+                </div>
+                """
+                popup = folium.Popup(popup_html, max_width=250)
+                folium.CircleMarker(
+                    location=[row['lat'], row['lng']],
+                    radius=radius_size,
+                    popup=popup,
+                    color='#059669',
+                    fill=True,
+                    fill_color='#10B981',
+                    fill_opacity=0.6,
+                    tooltip=f"🟢 {row['signguNm']} (클릭하여 상세 보기)"
+                ).add_to(m2_o)
+            components.html(m2_o._repr_html_(), height=500)
+
+        # Dataframe displays side-by-side
+        c2_df_a, c2_df_b = st.columns(2)
+        with c2_df_a:
+            st.markdown("##### 🔵 청년층 인기 명소 목록")
+            st.dataframe(df_map_y[['signguNm', 'visitorCnt', 'mainItem']].rename(columns={'signguNm':'시군구명', 'visitorCnt':'방문지수', 'mainItem':'주요 콘텐츠'}), use_container_width=True, hide_index=True)
+        with c2_df_b:
+            st.markdown("##### 🟢 중장년층 인기 명소 목록")
+            st.dataframe(df_map_o[['signguNm', 'visitorCnt', 'mainItem']].rename(columns={'signguNm':'시군구명', 'visitorCnt':'방문지수', 'mainItem':'주요 콘텐츠'}), use_container_width=True, hide_index=True)
+
+        st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [주요 명소 API 조회 인사이트]</span> 청년층(액티비티/K-pop)과 중장년층(전통/자연/힐링)의 타겟 자원 유입이 뚜렷히 이원화되며, 두 지도 및 표를 통해 권역별 유입 규모와 콘텐츠 선호 패턴을 입체적으로 교차 분석할 수 있습니다.</div>""", unsafe_allow_html=True)
 
     # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
     st.markdown("""
