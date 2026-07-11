@@ -1,12 +1,6 @@
 streamlit
 pandas
-requests
 plotly
-pytrends
-lxml
-textblob
-pytumblr
-selenium
-webdriver-manager
-undetected-chromedriver
+numpy
 folium
+requests
