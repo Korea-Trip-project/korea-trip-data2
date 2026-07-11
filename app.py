@@ -212,6 +212,17 @@ section[data-testid="stSidebar"] {
     width: 100% !important;
 }
 
+.insight-summary-card {
+    background: #EFF6FF !important;
+    border: 1px solid #BFDBFE !important;
+    border-left: 5px solid #1D4ED8 !important;
+    border-radius: 12px !important;
+    padding: 18px 22px !important;
+    margin-top: 25px !important;
+    margin-bottom: 15px !important;
+    box-shadow: 0 4px 6px -1px rgba(30,58,138,0.02) !important;
+}
+
 /* --- Google Chrome Tabs Navigation Styling --- */
 .chrome-tab-bar {
     display: flex !important;
@@ -387,10 +398,12 @@ AGE_VISIT_RATIO = {
 @st.cache_data
 def get_integrated_data():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    if os.path.exists(os.path.join(current_dir, "★korea-trip-data", "data")):
-        data_dir = os.path.join(current_dir, "★korea-trip-data", "data")
-    else:
+    if os.path.exists(os.path.join(current_dir, "data")):
         data_dir = os.path.join(current_dir, "data")
+    elif os.path.exists(os.path.join(os.path.dirname(current_dir), "data")):
+        data_dir = os.path.join(os.path.dirname(current_dir), "data")
+    else:
+        data_dir = os.path.join(current_dir, "★korea-trip-data", "data")
     
     # 1. Google Trends (from regional_google_trends.csv)
     google_trends_data = {
@@ -666,6 +679,11 @@ def build_age_dataframes():
     return df_int, df_vis
 
 df_interest, df_visit = build_age_dataframes()
+
+# Safety check to prevent empty data crash
+if df_interest.empty or df_visit.empty:
+    st.error("⚠️ 데이터베이스를 불러오지 못했습니다. 루트 폴더의 `data` 디렉터리에 데이터베이스 파일(*.db)이 있는지 확인해주세요.")
+    st.stop()
 
 # Plotly 공통 레이아웃 (라이트 테마)
 LAYOUT_BASE = dict(
@@ -987,6 +1005,16 @@ if active_page == "interest":
         df_tbl["관심도지수"] = df_tbl["관심도지수"].apply(lambda x: f"{x:.2f}")
         st.dataframe(df_tbl, use_container_width=True, hide_index=True)
 
+        st.markdown("""
+        <div class="insight-summary-card">
+            <h4 style="margin:0 0 10px 0; color:#1D4ED8; font-weight:700;">💡 주요 분석 인사이트 (관심도)</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
+                <strong>청년층 (10대~40대)</strong>은 대도시 인접 지역이자 액티비티/리조트 자원이 풍부한 <strong>강원특별자치도(69.0)</strong>와 <strong>경기도(68.3)</strong>에 매우 높은 관심을 보이고 있습니다. 이는 젊은 외래 관광객이 동적인 체험형 관광을 선호함을 의미합니다.<br>
+                반면, <strong>중장년층 (50대~90대)</strong>은 역사 문화 유산과 풍부한 식문화를 보유한 <strong>전북특별자치도(34.0)</strong>와 <strong>경상북도(30.3)</strong>에 강한 호기심을 드러내어 연령대별 선호 관광 테마가 뚜렷하게 분화됨을 시사합니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 # ═══════════════════════════════════════════════════════════
 # 메뉴 2: 외국인 한국 지역별 방문도
@@ -1225,6 +1253,16 @@ elif active_page == "visit":
             fig_bar.update_xaxes(gridcolor=GRID_COLOR)
             fig_bar.update_yaxes(gridcolor=GRID_COLOR)
             st.plotly_chart(fig_bar, use_container_width=True)
+
+        st.markdown("""
+        <div class="insight-summary-card" style="border-left-color: #059669; background-color: #ECFDF5; border-color: #A7F3D0;">
+            <h4 style="margin:0 0 10px 0; color:#059669; font-weight:700;">💡 주요 분석 인사이트 (방문도)</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
+                실제 방문 현황인 방문도지수를 분석한 결과, <strong>청년층</strong>과 <strong>중장년층</strong> 모두에서 <strong>경기도</strong>와 <strong>인천광역시</strong>가 압도적인 1위와 2위를 기록했습니다.<br>
+                이는 인천국제공항으로 대표되는 관문성(Gateway Accessibility)과 수도권 대중교통 인프라의 편리함이 연령을 불문하고 외래 관광객들의 실제 이동을 지배하는 가장 핵심적인 물리적 요인임을 입증합니다. 비수도권 중에서는 강원특별자치도가 3위에 올라 KTX 등 연계 수단이 실제 방문율에 큰 영향을 미치고 있습니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1498,6 +1536,16 @@ elif active_page == "vs":
             fig_gap_d.update_xaxes(gridcolor=GRID_COLOR)
             fig_gap_d.update_yaxes(gridcolor=GRID_COLOR)
             st.plotly_chart(fig_gap_d, use_container_width=True)
+
+        st.markdown("""
+        <div class="insight-summary-card" style="border-left-color: #8B5CF6; background-color: #F5F3FF; border-color: #DDD6FE;">
+            <h4 style="margin:0 0 10px 0; color:#8B5CF6; font-weight:700;">💡 주요 분석 인사이트 (관심도 vs 방문도)</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
+                관심도와 방문도의 상관관계를 시각화한 분석 결과, 큰 격차(Gap)가 나타나는 지역들이 관찰됩니다.<br>
+                <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 높은 매력도와 호기심을 유발하여 온라인 관심도지수는 최상위권이나, 실제 방문지수는 이를 하회하는 경향(높은 +Gap)이 뚜렷합니다. 이는 <strong>관심을 실제 행동으로 전환(Conversion)</strong>시키기 위해 연계 대중교통망을 확충하고, 투어 패스나 연계 셔틀을 보급하는 정책이 핵심 과제임을 가리킵니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
 # 메뉴 4: 외국인 방문 트렌드 지도
@@ -1778,6 +1826,16 @@ elif active_page == "map":
         components.html(m2._repr_html_(), height=550)
         
         st.dataframe(df_map[['signguNm', 'visitorCnt', 'mainItem']], use_container_width=True, hide_index=True)
+
+        st.markdown("""
+        <div class="insight-summary-card" style="border-left-color: #EAB308; background-color: #FEF9C3; border-color: #FEF08A;">
+            <h4 style="margin:0 0 10px 0; color:#CA8A04; font-weight:700;">💡 주요 분석 인사이트 (방문 트렌드 지도)</h4>
+            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
+                연령대별 방문 분포 지도를 지리적 데이터(Choropleth Heatmap)로 투영한 결과, <strong>외래객 공간 분포의 수도권 편중 및 로컬 분화</strong> 패턴이 선명하게 나타납니다.<br>
+                <strong>청년층</strong>의 방문 밀도는 수도권(경기, 인천)에서 강원권(강릉, 속초 등 리조트/서핑 자원 중심)으로 이어지는 동서 축이 활성을 보이고 있습니다. 반면, <strong>중장년층</strong>의 공간 밀도는 경상권(경주 등 역사 중심) 및 전라권(전주 등 식문화 중심)의 개별 클러스터에서 국지적으로 강세를 보입니다. 이에 맞춰 맞춤형 로컬 관광 상품 개발과 공간 다변화 정책이 효과를 거둘 수 있습니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────
