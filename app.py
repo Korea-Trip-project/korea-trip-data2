@@ -1506,17 +1506,17 @@ elif active_page == "vs":
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
                 <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
                     <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 중장년층 고관심 &gt; 저방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">강원특별자치도</div>
-                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 1위 34.0 → 방문 4위 10.5<br><strong>(잠재 미전환 1위)</strong></div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">울산광역시</div>
+                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 4위 25.9 → 방문 13위 5.6<br><strong>(잠재 미전환 Gap 1위)</strong></div>
                 </div>
                 <div style="background:#FFFFFF; border:1px solid #A7F3D0; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(5,150,105,0.05);">
                     <div style="font-size:0.78rem; font-weight:700; color:#059669; margin-bottom:4px;">🎯 중장년층 저관심 &lt; 고방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#065F46;">전북특별자치도</div>
-                    <div style="font-size:0.75rem; color:#047857; margin-top:4px;">탐색 6위 16.5 → 방문 1위 14.0<br><strong>(방문전환 최고 84.8%)</strong></div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#065F46;">경상북도</div>
+                    <div style="font-size:0.75rem; color:#047857; margin-top:4px;">관심 2위 30.3 → 방문 2위 13.2<br><strong>(방문전환 최고효율 43.6%)</strong></div>
                 </div>
             </div>
             <div style="padding:10px 14px; background:#ECFDF5; border-radius:8px; font-size:0.83rem; color:#065F46; line-height:1.45; border:1px solid #A7F3D0;">
-                💡 <strong>중장년층 종합 결론</strong>: 중장년층 온라인 탐색은 강원·경북 등 자연명소가 상위권이지만, 실제 방문 체류 1위는 전주 한옥마을 등 미식/역사 거점인 <strong>전북특별자치도(전환율 84.8%)</strong>가 차지하며 관심과 실제 방문 간 구조적 역전이 가장 뚜렷합니다.
+                💡 <strong>중장년층 종합 결론</strong>: 중장년층은 <strong>전북특별자치도(34.0)</strong>, <strong>경상북도(30.3)</strong>, <strong>전라남도(27.3)</strong>가 온라인 관심도와 실제 방문도 모두 Top 3를 휩쓸며 미식·역사·자연 테마의 선호도가 매우 확고합니다. 특히 <strong>경상북도</strong>는 관심 대비 방문 체류 효율이 가장 높게 나타난 반면, <strong>울산광역시</strong>나 <strong>세종특별자치시</strong>는 온라인 관심 대비 실제 방문 체류로의 전환이 저조해 체류 콘텐츠 보완이 요구됩니다.
             </div>
         </div>
         """, unsafe_allow_html=True)
