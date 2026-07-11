@@ -1371,13 +1371,18 @@ elif active_page == "vs":
     df_merged["전환효율"] = (df_merged["방문도지수"] / df_merged["관심도지수"]).round(3)
     df_merged["Gap"]      = (df_merged["관심도지수"] - df_merged["방문도지수"]).round(1)
 
+    for grp in [GRP_YOUNG_LABEL, GRP_OLD_LABEL]:
+        mask = df_merged["연령그룹"] == grp
+        max_i = df_merged.loc[mask, "관심도지수"].max()
+        max_v = df_merged.loc[mask, "방문도지수"].max()
+        df_merged.loc[mask, "관심도지수"] = (df_merged.loc[mask, "관심도지수"] / max_i * 100).round(1)
+        df_merged.loc[mask, "방문도지수"] = (df_merged.loc[mask, "방문도지수"]           / max_v * 100).round(1)
+
+    df_merged["전환효율"] = (df_merged["방문도지수"] / df_merged["관심도지수"]).round(3)
+    df_merged["Gap"]      = (df_merged["관심도지수"] - df_merged["방문도지수"]).round(1)
+
     df_y_m = df_merged[df_merged["연령그룹"] == GRP_YOUNG_LABEL]
     df_o_m = df_merged[df_merged["연령그룹"] == GRP_OLD_LABEL]
-
-    best_y = df_y_m.loc[df_y_m["전환효율"].idxmax(), "지역"]
-    best_o = df_o_m.loc[df_o_m["전환효율"].idxmax(), "지역"]
-    gap_y  = df_y_m.loc[df_y_m["Gap"].idxmax(), "지역"]
-    gap_o  = df_o_m.loc[df_o_m["Gap"].idxmax(), "지역"]
 
     # 청년층 및 중장년층 관심도 Top 3 / 방문도 Top 3 산출 (원본 지수 기준)
     rows_y_i, rows_o_i = [], []
@@ -1442,8 +1447,20 @@ elif active_page == "vs":
                     </div>
                 </div>
             </div>
-            <div style="margin-top:10px; padding:8px 12px; background:#EFF6FF; border-radius:6px; font-size:0.82rem; color:#1E3A8A; line-height:1.4;">
-                💡 <strong>분석</strong>: 강원·경기·인천 3개 지역이 관심도와 방문도 모두 상위권을 차지하나, 실제 방문 시에는 수도권 교통 접근성이 뛰어난 <strong>경기·인천이 1·2위로 상승</strong>하는 교차 특징을 보입니다.
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
+                <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
+                    <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 청년층 고관심 &gt; 저방문</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">강원특별자치도</div>
+                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 1위 69.0 → 방문 3위 46.6<br><strong>(잠재 미전환 1위)</strong></div>
+                </div>
+                <div style="background:#FFFFFF; border:1px solid #BFDBFE; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(37,99,235,0.05);">
+                    <div style="font-size:0.78rem; font-weight:700; color:#2563EB; margin-bottom:4px;">🎯 청년층 저관심 &lt; 고방문</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#1E40AF;">경기도</div>
+                    <div style="font-size:0.75rem; color:#1D4ED8; margin-top:4px;">관심 2위 68.3 → 방문 1위 59.0<br><strong>(방문전환율 86.5%)</strong></div>
+                </div>
+            </div>
+            <div style="padding:10px 14px; background:#EFF6FF; border-radius:8px; font-size:0.83rem; color:#1E3A8A; line-height:1.45; border:1px solid #DBEAFE;">
+                💡 <strong>청년층 종합 결론</strong>: 강원특별자치도는 청년층 온라인 관심도 1위(69.0)이나 실제 방문에서는 수도권(경기·인천)에 1·2위를 내주며 미전환 갭이 가장 큽니다. 반면 <strong>경기도</strong>는 뛰어난 교통 접근성과 인프라로 관심 대비 방문 전환율 최고효율(86.5%) 및 방문 1위를 달성했습니다.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1486,37 +1503,23 @@ elif active_page == "vs":
                     </div>
                 </div>
             </div>
-            <div style="margin-top:10px; padding:8px 12px; background:#ECFDF5; border-radius:6px; font-size:0.82rem; color:#065F46; line-height:1.4;">
-                💡 <strong>분석</strong>: 온라인 관심도는 강원·경북 등 자연명소가 상위권이지만, <strong>실제 방문 1위는 전주 한옥마을의 전북</strong>, 3위는 미식/힐링의 <strong>전남</strong>으로 실질 체류 선호도가 크게 다릅니다.
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
+                <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
+                    <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 중장년층 고관심 &gt; 저방문</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">강원특별자치도</div>
+                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 1위 34.0 → 방문 4위 10.5<br><strong>(잠재 미전환 1위)</strong></div>
+                </div>
+                <div style="background:#FFFFFF; border:1px solid #A7F3D0; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(5,150,105,0.05);">
+                    <div style="font-size:0.78rem; font-weight:700; color:#059669; margin-bottom:4px;">🎯 중장년층 저관심 &lt; 고방문</div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#065F46;">전북특별자치도</div>
+                    <div style="font-size:0.75rem; color:#047857; margin-top:4px;">탐색 6위 16.5 → 방문 1위 14.0<br><strong>(방문전환 최고 84.8%)</strong></div>
+                </div>
+            </div>
+            <div style="padding:10px 14px; background:#ECFDF5; border-radius:8px; font-size:0.83rem; color:#065F46; line-height:1.45; border:1px solid #A7F3D0;">
+                💡 <strong>중장년층 종합 결론</strong>: 중장년층 온라인 탐색은 강원·경북 등 자연명소가 상위권이지만, 실제 방문 체류 1위는 전주 한옥마을 등 미식/역사 거점인 <strong>전북특별자치도(전환율 84.8%)</strong>가 차지하며 관심과 실제 방문 간 구조적 역전이 가장 뚜렷합니다.
             </div>
         </div>
         """, unsafe_allow_html=True)
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">청년층 저관심 &gt; 고방문</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{best_y}</div>
-        <div class="kpi-delta-up">🎯 청년층 관심→방문 최고효율</div>
-        </div>""", unsafe_allow_html=True)
-    with k2:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">중장년층 저관심 &gt; 고방문</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{best_o}</div>
-        <div class="kpi-delta-up" style="color:#059669;">🎯 중장년층 관심→방문 최고효율</div>
-        </div>""", unsafe_allow_html=True)
-    with k3:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">청년층 고관심 &gt; 저방문</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{gap_y}</div>
-        <div class="kpi-delta-down">⚠️ 청년층 잠재 미전환 지역</div>
-        </div>""", unsafe_allow_html=True)
-    with k4:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">중장년층 고관심 &gt; 저방문</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{gap_o}</div>
-        <div class="kpi-delta-down">⚠️ 중장년층 잠재 미전환 지역</div>
-        </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
 
