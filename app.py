@@ -40,6 +40,9 @@ div[data-testid="stMainBlockContainer"] {
 [data-testid="stSidebarUserContent"] {
     padding-top: 0.5rem !important;
 }
+[data-testid="stSidebarHeader"] {
+    display: none !important;
+}
 header[data-testid="stHeader"] {
     display: none !important;
 }
