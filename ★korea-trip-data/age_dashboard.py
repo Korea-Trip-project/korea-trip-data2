@@ -1012,6 +1012,8 @@ if active_page == "interest":
         fig3.update_yaxes(gridcolor=GRID_COLOR)
         st.plotly_chart(fig3, use_container_width=True)
 
+        st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [관심도 비교 차트 인사이트]</span> 청년층(10대~40대)은 강원·경기 등 레저/수도권 권역에 60점대 후반의 높은 호기심을 보이며, 중장년층(50대~90대)은 전북·경북 등 전통 문화와 식문화 보유 권역에 상대적으로 높은 선호를 보입니다.</div>""", unsafe_allow_html=True)
+
     with tab2:
         st.markdown("#### 🌡️ 연령대 × 지역 관심도 히트맵 (지수 기준)")
         pivot = df_interest.pivot_table(index="연령대", columns="지역", values="관심도지수", aggfunc="mean")
@@ -1026,6 +1028,8 @@ if active_page == "interest":
         fig_heat.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
         fig_heat.update_xaxes(tickangle=-35)
         st.plotly_chart(fig_heat, use_container_width=True)
+
+        st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [히트맵 분석 인사이트]</span> 20대·30대 구간에서 강원·경기의 파란색 밀도가 가장 높게 집중되며, 연령대가 높아질수록(50대 이상) 전북·경북 등 내륙 권역의 호기심 비중이 뚜렷하게 상승합니다.</div>""", unsafe_allow_html=True)
 
     with tab3:
         st.markdown("#### 📈 지역 선택 — 연령대별 관심도 레이더 차트")
@@ -1066,15 +1070,18 @@ if active_page == "interest":
         df_tbl["관심도지수"] = df_tbl["관심도지수"].apply(lambda x: f"{x:.2f}")
         st.dataframe(df_tbl, use_container_width=True, hide_index=True)
 
-        st.markdown("""
-        <div class="insight-summary-card insight-interest">
-            <h4 style="margin:0 0 10px 0; color:#1D4ED8; font-weight:700;">💡 주요 분석 인사이트 (관심도)</h4>
-            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
-                <strong>청년층 (10대~40대)</strong>은 대도시 인접 지역이자 액티비티/리조트 자원이 풍부한 <strong>강원특별자치도(69.0)</strong>와 <strong>경기도(68.3)</strong>에 매우 높은 관심을 보이고 있습니다. 이는 젊은 외래 관광객이 동적인 체험형 관광을 선호함을 의미합니다.<br>
-                반면, <strong>중장년층 (50대~90대)</strong>은 역사 문화 유산과 풍부한 식문화를 보유한 <strong>전북특별자치도(34.0)</strong>와 <strong>경상북도(30.3)</strong>에 강한 호기심을 드러내어 연령대별 선호 관광 테마가 뚜렷하게 분화됨을 시사합니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [지역 상세 분석 인사이트]</span> 선택한 시/도의 10대~90대 관심도 분포와 수치 분석을 통해 해당 권역이 청년 타겟인지 중장년 타겟인지 세부 프로모션 방향을 진단할 수 있습니다.</div>""", unsafe_allow_html=True)
+
+    # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
+    st.markdown("""
+    <div class="insight-summary-card insight-interest" style="margin-top:28px;">
+        <h4 style="margin:0 0 10px 0; color:#1D4ED8; font-weight:700;">💡 주요 분석 인사이트 — 외국인 한국 지역별 관심도</h4>
+        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
+            <strong>청년층 (10대~40대)</strong>은 대도시 인접 권역이자 액티비티·리조트 자원이 풍부한 <strong>강원특별자치도(69.0점)</strong>와 <strong>경기도(68.3점)</strong>에 가장 높은 온라인 탐색 호기심을 드러내어 동적인 체험형 관광을 선호함을 증명합니다.<br>
+            반면, <strong>중장년층 (50대~90대)</strong>은 역사 문화 유산과 풍부한 식문화를 보유한 <strong>전북특별자치도(34.0점)</strong>와 <strong>경상북도(30.3점)</strong>에 강한 관심도를 보여, <strong>연령층별 선호 테마가 '체험·레저(청년)' vs '전통·문화(중장년)'로 뚜렷하게 분화</strong>되어 있음을 실증합니다.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1260,6 +1267,8 @@ elif active_page == "visit":
         fig_st.update_yaxes(gridcolor=GRID_COLOR)
         st.plotly_chart(fig_st, use_container_width=True)
 
+        st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [방문도 비교 차트 인사이트]</span> 청년층 최다 방문 권역 1위는 경기도(59.0점), 2위 인천(49.6점), 3위 강원(46.6점)이며, 중장년층 1위는 전북(14.0점), 2위 경북(13.2점), 3위 전남(11.3점)으로 나타나 세대별 방문 거점의 명확한 지리적 차별화를 입증합니다.</div>""", unsafe_allow_html=True)
+
     with tab2:
         st.markdown("#### 🌡️ 연령대 × 지역 방문도 히트맵 (지수 기준)")
         pivot_v = df_visit.pivot_table(index="연령대", columns="지역", values="방문도지수", aggfunc="mean")
@@ -1272,6 +1281,8 @@ elif active_page == "visit":
         fig_heat.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
         fig_heat.update_xaxes(tickangle=-35)
         st.plotly_chart(fig_heat, use_container_width=True)
+
+        st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [히트맵 분석 인사이트]</span> 청년층은 수도권 및 동해안 리조트 벨트에 높은 밀도의 방문 패턴을 보이는 반면, 중장년층은 호남·영남 내륙 역사 및 미식 거점 도시들에 체류형 방문이 분산되는 경향을 나타냅니다.</div>""", unsafe_allow_html=True)
 
     with tab3:
         st.markdown("#### 📈 지역 선택 — 연령대별 방문도 상세 분석")
@@ -1316,15 +1327,18 @@ elif active_page == "visit":
             fig_bar.update_yaxes(gridcolor=GRID_COLOR)
             st.plotly_chart(fig_bar, use_container_width=True)
 
-        st.markdown("""
-        <div class="insight-summary-card insight-visit">
-            <h4 style="margin:0 0 10px 0; color:#059669; font-weight:700;">💡 주요 분석 인사이트 (방문도)</h4>
-            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
-                <strong>청년층 (10대~40대)</strong>은 에버랜드·DMZ·스키 리조트 등 액티비티 자원이 풍부한 <strong>경기도(82.0)</strong>와 공항 관문 및 트렌디한 팝업 문화의 <strong>인천(68.0)</strong>에 이어, 서핑·스키 등 체험형 자원 중심의 <strong>강원특별자치도(63.0)</strong>가 뚜렷한 3위를 차지합니다.<br>
-                반면 <strong>중장년층 (50대~90대)</strong>은 전주 한옥마을·음식 문화의 <strong>전북특별자치도(35.0)</strong>와 경주·안동 역사 유산의 <strong>경상북도(33.0)</strong>가 강원(28.0)보다 높은 순위를 기록합니다. 이는 연령대별 방문 테마가 <strong>액티비티(청년) vs 역사·문화(중장년)</strong>로 명확히 분화됨을 보여줍니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [지역 상세 분석 인사이트]</span> 특정 시도 권역 내 세부 연령대(10대~90대) 방문 구성비와 지수를 통해 해당 지역에 최적화된 연령 맞춤형 인프라 및 패키지 개발 전략을 수립할 수 있습니다.</div>""", unsafe_allow_html=True)
+
+    # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
+    st.markdown("""
+    <div class="insight-summary-card insight-visit" style="margin-top:28px;">
+        <h4 style="margin:0 0 10px 0; color:#059669; font-weight:700;">💡 주요 분석 인사이트 — 외국인 한국 지역별 방문도</h4>
+        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
+            <strong>청년층 (10대~40대)</strong>은 에버랜드·DMZ·스키 리조트 등 액티비티 자원이 풍부한 <strong>경기도(59.0점)</strong>와 공항 관문 및 트렌디한 팝업 문화의 <strong>인천광역시(49.6점)</strong>, 서핑·레저 중심의 <strong>강원특별자치도(46.6점)</strong>를 최다 방문지로 꼽았습니다.<br>
+            반면, <strong>중장년층 (50대~90대)</strong>은 전주 한옥마을 및 미식 자원의 <strong>전북특별자치도(14.0점)</strong>와 경주·안동 역사 유산의 <strong>경상북도(13.2점)</strong>, 남도 미식 거점인 <strong>전라남도(11.3점)</strong>에서 가장 높은 방문도를 보였습니다. 이는 <strong>'액티비티(청년)' vs '역사·미식(중장년)'이라는 연령대별 실제 관광지 선택 기준의 극명한 차이</strong>를 명확히 보여줍니다.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1428,6 +1442,8 @@ elif active_page == "vs":
                 fig_sc.update_yaxes(gridcolor=GRID_COLOR, range=[0, 115])
                 st.plotly_chart(fig_sc, use_container_width=True)
 
+        st.markdown("""<div style="background-color:#FAF5FF; border-left:4px solid #A855F7; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#8B5CF6;">📌 [스캐터 상관 분석 인사이트]</span> 우상단(관심·방문 모두 높음)의 경기도 및 인천은 확고한 유입 거점이며, 좌상단(관심↑ 방문↓)의 강원·전북 등은 탐색 매력도에 비해 실제 체류 전환이 부족하므로 교통 인프라 및 패키지 연계가 요구되는 핵심 개선 타겟입니다.</div>""", unsafe_allow_html=True)
+
         st.markdown("""
         <div class="insight-box">
         <strong>대각선 기준 해석</strong>: 점이 대각선(y=x) <strong>위</strong>에 위치할수록 관심도 대비 방문도가 높은 '방문 집중 지역',
@@ -1471,6 +1487,8 @@ elif active_page == "vs":
         </div>
         """, unsafe_allow_html=True)
 
+        st.markdown("""<div style="background-color:#FAF5FF; border-left:4px solid #A855F7; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#8B5CF6;">📌 [Gap 분석 인사이트]</span> 양(+)의 격차가 큰 권역은 온라인 홍보 효과가 훌륭하지만 접근성 등 물리적 장벽으로 유실(Drop-off)이 크게 발생하는 지역이므로, 투어패스 및 직통 셔틀버스 도입이 효과적입니다.</div>""", unsafe_allow_html=True)
+
     with tab3:
         st.markdown("#### 🌡️ 지표별 연령대 × 지역 히트맵")
 
@@ -1510,6 +1528,8 @@ elif active_page == "vs":
         ).round(2)
         df_tbl.columns = [f"{col[1]} — {col[0]}" for col in df_tbl.columns]
         st.dataframe(df_tbl, use_container_width=True)
+
+        st.markdown("""<div style="background-color:#FAF5FF; border-left:4px solid #A855F7; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#8B5CF6;">📌 [히트맵 및 전환율 인사이트]</span> 전환효율(방문/관심) 지표 및 Gap 분포 테이블을 통해, 연령층별로 어느 지자체에서 마케팅 대비 실제 방문 전환이 최고치 또는 최저치를 기록하는지 정밀 진단할 수 있습니다.</div>""", unsafe_allow_html=True)
 
     with tab4:
         st.markdown("#### 🔬 지역 선택 — 관심도 vs 방문도 심층 비교")
@@ -1599,15 +1619,18 @@ elif active_page == "vs":
             fig_gap_d.update_yaxes(gridcolor=GRID_COLOR)
             st.plotly_chart(fig_gap_d, use_container_width=True)
 
-        st.markdown("""
-        <div class="insight-summary-card insight-vs">
-            <h4 style="margin:0 0 10px 0; color:#8B5CF6; font-weight:700;">💡 주요 분석 인사이트 (관심도 vs 방문도)</h4>
-            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
-                관심도와 방문도의 상관관계를 시각화한 분석 결과, 큰 격차(Gap)가 나타나는 지역들이 관찰됩니다.<br>
-                <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 높은 매력도와 호기심을 유발하여 온라인 관심도지수는 최상위권이나, 실제 방문지수는 이를 하회하는 경향(높은 +Gap)이 뚜렷합니다. 이는 <strong>관심을 실제 행동으로 전환(Conversion)</strong>시키기 위해 연계 대중교통망을 확충하고, 투어 패스나 연계 셔틀을 보급하는 정책이 핵심 과제임을 가리킵니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div style="background-color:#FAF5FF; border-left:4px solid #A855F7; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#8B5CF6;">📌 [지역 심층 비교 인사이트]</span> 10대부터 90대까지 선택 지역 내 세부 연령별 관심-방문 지수 불일치 원인을 분석하여, 취약 연령층 맞춤형 연계 관광 콘텐츠를 발굴할 수 있습니다.</div>""", unsafe_allow_html=True)
+
+    # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
+    st.markdown("""
+    <div class="insight-summary-card insight-vs" style="margin-top:28px;">
+        <h4 style="margin:0 0 10px 0; color:#8B5CF6; font-weight:700;">💡 주요 분석 인사이트 — 외국인 관심도 vs 방문도 상관 및 갭(Gap) 분석</h4>
+        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
+            관심도와 방문도의 상관관계를 다각도로 시각화한 분석 결과, 온라인 탐색과 실제 방문 간에 큰 격차(Gap)가 발생하는 권역과 높은 전환을 보이는 권역이 명확히 구별됩니다.<br>
+            <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 매력도와 호기심을 유발하여 온라인 관심지수는 높은 편이나, 실제 체류 방문지수는 이를 하회하는 <strong>고관심 > 저방문 (+Gap)</strong> 경향이 나타납니다. 이는 <strong>잠재 관광객의 높은 호기심을 실제 방문 행동(Conversion)으로 유도</strong>하기 위해 KTX/여객 연계 셔틀버스 등 교통망 개선과 지역 통합 투어패스 확충이 시급한 정책적 당면 과제임을 실증합니다.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════
 # 메뉴 4: 외국인 방문 트렌드 지도
@@ -1816,6 +1839,8 @@ elif active_page == "map":
                 except Exception as e:
                     st.error(f"데이터 로드 중 에러 발생: {e}")
 
+        st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [통합 트렌드 및 API 조회 인사이트]</span> 지리적 Choropleth 투영을 통해 청년층은 수도권·강원 동서축(레저/도시) 권역에, 중장년층은 전라·경상 내륙 클러스터(미식/전통) 권역에 강한 밀집도를 보임을 가시적으로 확인할 수 있으며, KTO API를 통해 권역별 실시간 외래 관광지 상세 자원을 확인할 수 있습니다.</div>""", unsafe_allow_html=True)
+
     with map_tab2:
         st.markdown("#### 🗺️ TarRlteTarvstat API 기반 주요 명소 (Fallback 작동)")
 
@@ -1890,15 +1915,18 @@ elif active_page == "map":
         
         st.dataframe(df_map[['signguNm', 'visitorCnt', 'mainItem']], use_container_width=True, hide_index=True)
 
-        st.markdown("""
-        <div class="insight-summary-card insight-map">
-            <h4 style="margin:0 0 10px 0; color:#CA8A04; font-weight:700;">💡 주요 분석 인사이트 (방문 트렌드 지도)</h4>
-            <p style="margin:0; font-size:0.9rem; color:#475569; line-height:1.6; text-align:justify;">
-                연령대별 방문 분포 지도를 지리적 데이터(Choropleth Heatmap)로 투영한 결과, <strong>외래객 공간 분포의 수도권 편중 및 로컬 분화</strong> 패턴이 선명하게 나타납니다.<br>
-                <strong>청년층</strong>의 방문 밀도는 수도권(경기, 인천)에서 강원권(강릉, 속초 등 리조트/서핑 자원 중심)으로 이어지는 동서 축이 활성을 보이고 있습니다. 반면, <strong>중장년층</strong>의 공간 밀도는 경상권(경주 등 역사 중심) 및 전라권(전주 등 식문화 중심)의 개별 클러스터에서 국지적으로 강세를 보입니다. 이에 맞춰 맞춤형 로컬 관광 상품 개발과 공간 다변화 정책이 효과를 거둘 수 있습니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [주요 명소 API 조회 인사이트]</span> 실시간 외래 관광객 수와 대표 매력물 정보를 통해, 지방권역의 주요 거점 관광지(경주 한복, 강릉 바다, 전주 한옥 등) 유입 테마와 현황을 직관적으로 파악할 수 있습니다.</div>""", unsafe_allow_html=True)
+
+    # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
+    st.markdown("""
+    <div class="insight-summary-card insight-map" style="margin-top:28px;">
+        <h4 style="margin:0 0 10px 0; color:#CA8A04; font-weight:700;">💡 주요 분석 인사이트 — 외국인 방문 트렌드 지도 및 실시간 자원 분석</h4>
+        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
+            14개 시도별 외래객 방문 분포를 지리적 히트맵(Choropleth Heatmap)으로 시각화한 결과, <strong>외래객 공간 유동의 '수도권 집중' 및 '로컬 분화' 패턴</strong>이 뚜렷하게 증명됩니다.<br>
+            <strong>청년층 (10대~40대)</strong>의 방문 밀도는 수도권(서울·경기·인천) 관문에서 강원권(강릉·속초 등 바다 및 레저 리조트)으로 연결되는 '동·서 활성 축'을 형성하고 있습니다. 반면, <strong>중장년층 (50대~90대)</strong>의 공간 분포는 전주 한옥마을 등 <strong>전라권(미식·문화 중심)</strong>과 경주·안동 등 <strong>경상권(역사·유산 중심)</strong> 내륙 거점 클러스터에 국지적으로 강하게 밀집됩니다. 따라서 <strong>'청년=동·서 레저벨트', '중장년=남부 역사·미식벨트'</strong>로 지리적 타겟팅을 이원화한 맞춤형 로컬 관광 정책이 필수적입니다.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────
