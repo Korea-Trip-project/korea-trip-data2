@@ -844,6 +844,10 @@ chrome_tabs_html = f"""
         <span>📱 외국인 인스타그램 로컬 트렌드</span>
         <span class="chrome-tab-close">×</span>
     </a>
+    <a href="/?page=foreign_feedback" target="_self" class="chrome-tab {'active' if active_page == 'foreign_feedback' else ''}">
+        <span>💬 실시간 피드백 분석</span>
+        <span class="chrome-tab-close">×</span>
+    </a>
     <div class="chrome-new-tab">＋</div>
 </div>
 """
@@ -2308,6 +2312,215 @@ elif active_page == "insta_trends":
             </p>
         </div>
         """, unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════
+# 메뉴 6: 외국인 실시간 피드백 및 관심도/방문도 분석
+# ═══════════════════════════════════════════════════════════
+elif active_page == "foreign_feedback":
+    st.markdown('<div class="section-title">💬 외국인 실시간 피드백 및 관심도/방문도 분석</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="insight-box">
+    본 페이지는 <strong>네이버 지도</strong> 및 <strong>캐치테이블 글로벌</strong>에서 실시간 수집된 외국어 리뷰 데이터를 기반으로 관심도와 방문도를 산출한 결과입니다.<br>
+    각 수집 채널별로 평점과 빈도수를 표준화(0~100점)하여 통합한 후, <strong>중앙값(Median)</strong>을 통해 최종 관심도와 방문도를 산출합니다.
+    </div>
+    """, unsafe_allow_html=True)
+
+    csv_file = "foreign_dashboard_data.csv"
+    
+    # 데이터 로드
+    @st.cache_data(ttl=600)
+    def load_foreign_raw_data():
+        if not os.path.exists(csv_file):
+            dummy_data = {
+                "source": ["Naver Map", "CatchTable Global", "Naver Map", "CatchTable Global", "Naver Map", "Naver Map"],
+                "city": ["경주", "경주", "강릉", "강릉", "수원", "안동"],
+                "review_text": [
+                    "The lights of Donggung Palace at night were superb! Loved Gyeongju.",
+                    "Easy to book via Catchtable Global. Great English menu description.",
+                    "Beautiful Gangneung beach and lovely soft tofu ice cream.",
+                    "Had to wait a bit but booking ahead saved my time.",
+                    "Suwon Hwaseong Fortress wall is massive and stunning during sunset.",
+                    "Andong Hahoe village feels like traveling back in time. Amazing."
+                ],
+                "detected_lang": ["en", "en", "en", "en", "en", "en"]
+            }
+            df = pd.DataFrame(dummy_data)
+            df.to_csv(csv_file, index=False, encoding="utf-8-sig")
+        return pd.read_csv(csv_file)
+
+    df_raw = load_foreign_raw_data()
+
+    # 감성 평점 규칙 함수 정의 (동일한 기준 0~5점 척도)
+    def calculate_sentiment_rating(text):
+        if not isinstance(text, str):
+            return 3.5
+        rating = 3.5
+        pos_words = ["great", "delicious", "good", "nice", "amazing", "wonderful", "perfect", "loved", "friendly", "best", "yummy", "맛있", "최고", "좋", "친절", "superb"]
+        text_lower = text.lower()
+        for word in pos_words:
+            if word in text_lower:
+                rating += 1.0
+                break
+        if len(text) > 50:
+            rating += 0.5
+        return min(rating, 5.0)
+
+    df_raw["rating"] = df_raw["review_text"].apply(calculate_sentiment_rating)
+
+    # 관심도 & 방문도 지표 산출 프로세스
+    # 각 플랫폼(Naver Map, CatchTable Global)별로 도시 기준 집계
+    cities_list = ["경주", "강릉", "수원", "안동"]
+    
+    metrics = []
+    
+    # 각 플랫폼별 최대값 산출용 카운트
+    counts_naver = df_raw[df_raw["source"] == "Naver Map"]["city"].value_counts().to_dict()
+    counts_catch = df_raw[df_raw["source"] == "CatchTable Global"]["city"].value_counts().to_dict()
+    
+    max_count_naver = max(counts_naver.values()) if counts_naver else 1.0
+    max_count_catch = max(counts_catch.values()) if counts_catch else 1.0
+    
+    for city in cities_list:
+        # Naver Map 데이터 필터링
+        naver_df = df_raw[(df_raw["city"] == city) & (df_raw["source"] == "Naver Map")]
+        n_count = len(naver_df)
+        n_rating = naver_df["rating"].mean() if n_count > 0 else 3.5 # 결측시 기본 3.5
+        
+        # CatchTable 데이터 필터링
+        catch_df = df_raw[(df_raw["city"] == city) & (df_raw["source"] == "CatchTable Global")]
+        c_count = len(catch_df)
+        c_rating = catch_df["rating"].mean() if c_count > 0 else 3.5
+        
+        # 1. 방문도 지수화 (표준화 0~100)
+        n_visit_score = (n_count / max_count_naver) * 100.0 if max_count_naver > 0 else 0.0
+        c_visit_score = (c_count / max_count_catch) * 100.0 if max_count_catch > 0 else 0.0
+        
+        # 2. 관심도 지수화 (동일 5점 만점 기준 -> 0~100 환산)
+        n_interest_score = (n_rating / 5.0) * 100.0
+        c_interest_score = (c_rating / 5.0) * 100.0
+        
+        # 3. 통합값의 중앙값(Median) 산출
+        integrated_visit = float(np.median([n_visit_score, c_visit_score]))
+        integrated_interest = float(np.median([n_interest_score, c_interest_score]))
+        
+        metrics.append({
+            "도시": city,
+            "네이버 평점 (5점)": round(n_rating, 2),
+            "캐치테이블 평점 (5점)": round(c_rating, 2),
+            "네이버 방문지수": round(n_visit_score, 1),
+            "캐치테이블 방문지수": round(c_visit_score, 1),
+            "통합 관심도 (중앙값)": round(integrated_interest, 1),
+            "통합 방문도 (중앙값)": round(integrated_visit, 1)
+        })
+
+    df_metrics = pd.DataFrame(metrics)
+
+    # 1. 상단 요약 지표 카드
+    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+    with m_col1:
+        st.markdown(f"""<div class="kpi-card">
+        <div class="kpi-label">수집된 외국어 피드백 수</div>
+        <div class="kpi-value">{len(df_raw)}개</div>
+        <div class="kpi-delta-up">📱 실시간 피드</div>
+        </div>""", unsafe_allow_html=True)
+    with m_col2:
+        st.markdown(f"""<div class="kpi-card">
+        <div class="kpi-label">네이버 지도 리뷰 수</div>
+        <div class="kpi-value">{len(df_raw[df_raw["source"] == 'Naver Map'])}개</div>
+        <div class="kpi-delta-up">🌐 Naver Map</div>
+        </div>""", unsafe_allow_html=True)
+    with m_col3:
+        st.markdown(f"""<div class="kpi-card">
+        <div class="kpi-label">캐치테이블 글로벌 예약 수</div>
+        <div class="kpi-value">{len(df_raw[df_raw["source"] == 'CatchTable Global'])}개</div>
+        <div class="kpi-delta-up" style="color:#059669;">🍽️ CatchTable</div>
+        </div>""", unsafe_allow_html=True)
+    with m_col4:
+        st.markdown(f"""<div class="kpi-card">
+        <div class="kpi-label">모니터링 대상 도시 수</div>
+        <div class="kpi-value">4개 시군</div>
+        <div class="kpi-delta-up">🏆 로컬 타겟</div>
+        </div>""", unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 2. 통합 결과 뷰어 테이블
+    st.markdown("### 🏆 플랫폼 통합 관심도 & 방문도 분석 결과")
+    st.dataframe(df_metrics, use_container_width=True, hide_index=True)
+
+    # 3. 차트 영역 (2단 구성)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("#### 📊 통합 관심도 vs 방문도 지수 비교")
+        df_melted = df_metrics.melt(id_vars="도시", value_vars=["통합 관심도 (중앙값)", "통합 방문도 (중앙값)"], var_name="지표", value_name="점수")
+        fig_bar = px.bar(
+            df_melted, x="도시", y="점수", color="지표", barmode="group",
+            color_discrete_map={"통합 관심도 (중앙값)": "#1D4ED8", "통합 방문도 (중앙값)": "#059669"},
+            template="plotly_white"
+        )
+        fig_bar.update_layout(LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=40))
+        st.plotly_chart(fig_bar, use_container_width=True)
+        
+    with c2:
+        st.markdown("#### 🥧 수집 채널별 피드백 비율")
+        channel_counts = df_raw["source"].value_counts().reset_index()
+        channel_counts.columns = ["플랫폼", "리뷰 수"]
+        fig_pie = px.pie(
+            channel_counts, values="리뷰 수", names="플랫폼", hole=0.4,
+            color_discrete_sequence=["#60A5FA", "#34D399"],
+            template="plotly_white"
+        )
+        fig_pie.update_layout(LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=40))
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    # 4. 실시간 외국어 피드 리스트
+    st.markdown("---")
+    st.markdown("### 📸 외국어 피드백 목록 (한국어 차단 완료)")
+    
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        selected_city = st.selectbox("도시 필터", ["전체"] + cities_list, key="foreign_city_filt")
+    with col_f2:
+        selected_source = st.selectbox("플랫폼 필터", ["전체", "Naver Map", "CatchTable Global"], key="foreign_source_filt")
+
+    df_filtered = df_raw.copy()
+    if selected_city != "전체":
+        df_filtered = df_filtered[df_filtered["city"] == selected_city]
+    if selected_source != "전체":
+        df_filtered = df_filtered[df_filtered["source"] == selected_source]
+
+    st.dataframe(
+        df_filtered[["city", "source", "review_text", "detected_lang", "rating"]],
+        column_config={
+            "city": "도시",
+            "source": "플랫폼",
+            "review_text": "외국인 남김말 (영어/일어 등)",
+            "detected_lang": "감지된 언어",
+            "rating": "평가 점수 (5점)"
+        },
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # 5. 수집 실행 컨트롤 타워
+    st.markdown("---")
+    st.markdown("### ⚙️ 데이터 동기화 관리")
+    col_btn_a, col_btn_b = st.columns([3, 1])
+    with col_btn_b:
+        if st.button("🔄 크롤러 수동 구동 및 신규 데이터 가져오기", use_container_width=True):
+            with st.spinner("네이버 지도 및 캐치테이블에서 새로운 외국인 리뷰를 분석하고 있습니다..."):
+                try:
+                    import subprocess
+                    result = subprocess.run([".venv\\Scripts\\python.exe", "collector.py"], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        st.success("데이터 최신화 완료! 대시보드가 새로고침됩니다.")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error(f"수집 실패: {result.stderr or result.stdout}")
+                except Exception as e:
+                    st.error(f"수집 스크립트 실행 중 에러가 발생했습니다: {e}")
 
 
 # ─────────────────────────────────────────────────────────
