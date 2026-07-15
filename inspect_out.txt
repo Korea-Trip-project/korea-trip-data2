@@ -1,0 +1,19 @@
+﻿KKDAY tables: ['kkday_products', 'kkday_product_details']
+  [kkday_products] cols: ['prod_mid', 'prod_oid', 'name', 'introduction', 'rating_count', 'rating_star', 'show_order_count', 'earliest_sale_date', 'sale_status', 'purchase_type', 'purchase_date', 'is_tourism_product', 'readable_url', 'display_tags', 'img_url_list', 'clip_urls', 'currency', 'official_price', 'max_price', 'min_price', 'discount', 'is_display_price', 'destinations', 'is_marketplace', 'supplier_oid_list', 'supplier_name', 'supplier_logo', 'supplier_badge', 'is_zero_price', 'is_kkday_best_route', 'prod_discount_type', 'cid_activity_labels', 'activity_labels', 'discount_labels', 'user_promotion_labels', 'url', 'star_percentage', 'show_url_order_num', 'rqSessionId', 'algoVersion', 'expVersion', 'page', 'product_category.main', 'product_category.sub', 'scraped_at']
+  [kkday_product_details] cols: ['prod_mid', 'deep_link', 'http_status', 'fetch_status', 'fetch_message', 'invalid_type', 'scraped_at', 'prod_oid', 'name', 'meta_title', 'description', 'feature_html', 'feature_text', 'notice_text', 'exchange_method', 'included_items', 'excluded_items', 'use_valid_period', 'nationality_restriction', 'refund_policy_text', 'extra_fee_text', 'purchase_summary', 'intro_summary', 'experience_location', 'gallery_image_urls', 'cover_image_urls', 'breadcrumb_path', 'min_price', 'max_price', 'official_price', 'rec_avg_score', 'rec_total_score', 'rec_num', 'order_num', 'wishlist_num', 'package_ids', 'package_count', 'guide_langs', 'display_guide_langs', 'destination_city_names', 'earliest_sale_date', 'latest_sale_date', 'is_marketplace', 'marketplace_supplier_oid', 'need_external_redirect', 'external_redirect_target', 'has_priority_booking', 'is_all_sold_out', 'readable_url', 'refund_policy_json', 'custom_description_module_json', 'raw_product_json']
+
+--- GYG ---
+GYG tables: ['sqlite_sequence', 'activities']
+  [sqlite_sequence] cols: ['name', 'seq']
+  [activities] cols: ['title', 'rating', 'reviews', 'price', 'region']
+
+--- Creatrip ---
+Creatrip tables: ['creatrip_products', 'creatrip_product_details']
+  [creatrip_products] cols: ['prod_mid', 'name', 'destinations', 'scraped_at']
+  [creatrip_product_details] cols: ['prod_mid', 'name', 'rec_avg_score', 'rec_num', 'guide_langs', 'scraped_at']
+
+--- GYG CSV ---
+cols: ['Title', 'Duration', 'Rating', 'Reviews', 'Price', 'Page', 'Region']
+
+--- KKday CSV ---
+cols: ['prod_mid', 'deep_link', 'http_status', 'fetch_status', 'fetch_message', 'invalid_type', 'scraped_at', 'prod_oid', 'name', 'meta_title', 'description', 'feature_html', 'feature_text', 'notice_text', 'exchange_method', 'included_items', 'excluded_items', 'use_valid_period', 'nationality_restriction', 'refund_policy_text', 'extra_fee_text', 'purchase_summary', 'intro_summary', 'experience_location', 'gallery_image_urls', 'cover_image_urls', 'breadcrumb_path', 'min_price', 'max_price', 'official_price', 'rec_avg_score', 'rec_total_score', 'rec_num', 'order_num', 'wishlist_num', 'package_ids', 'package_count', 'guide_langs', 'display_guide_langs', 'destination_city_names', 'earliest_sale_date', 'latest_sale_date', 'is_marketplace', 'marketplace_supplier_oid', 'need_external_redirect', 'external_redirect_target', 'has_priority_booking', 'is_all_sold_out', 'readable_url', 'refund_policy_json', 'custom_description_module_json', 'raw_product_json']
