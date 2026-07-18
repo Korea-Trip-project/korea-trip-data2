@@ -2305,15 +2305,15 @@ elif active_page == "visit":
             
             # Build the detailed insights HTML
             insights_html = f"""
-            <div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(16,185,129,0.06);">
-                <h4 style="margin:0 0 16px 0; color:#065F46; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
-                    <span>📍 {sel_region_vis} 시/군/구 단위 {sel_age_vis} 심층 방문 분석 및 소셜 트렌드</span>
-                </h4>
-                <p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
-                    선택하신 <strong>{sel_region_vis}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
-                    외국인 방문 유입량이 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
-                </p>
-            """
+<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(16,185,129,0.06);">
+<h4 style="margin:0 0 16px 0; color:#065F46; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+<span>📍 {sel_region_vis} 시/군/구 단위 {sel_age_vis} 심층 방문 분석 및 소셜 트렌드</span>
+</h4>
+<p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
+선택하신 <strong>{sel_region_vis}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
+외국인 방문 유입량이 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
+</p>
+"""
             
             # Display top 3 cities
             for idx, row in df_sigun_v.head(3).reset_index(drop=True).iterrows():
@@ -2327,17 +2327,17 @@ elif active_page == "visit":
                 badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
                 
                 insights_html += f"""
-                <div style="background:#FFFFFF; border:1px solid #E6F4EA; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                        <strong style="color:#065F46; font-size:1.05rem;">{badge_icon} {city_name}</strong>
-                        <span style="font-size:0.85rem; background:#ECFDF5; color:#047857; padding:2px 8px; border-radius:12px; font-weight:600;">방문지수: {score:.1f}점</span>
-                    </div>
-                    <div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
-                        • <strong>방문 통계:</strong> 소셜 버즈 및 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
-                        • <strong>주요 리뷰 내용 & 연관 해시태그:</strong> {kws_str}
-                    </div>
-                </div>
-                """
+<div style="background:#FFFFFF; border:1px solid #E6F4EA; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+<strong style="color:#065F46; font-size:1.05rem;">{badge_icon} {city_name}</strong>
+<span style="font-size:0.85rem; background:#ECFDF5; color:#047857; padding:2px 8px; border-radius:12px; font-weight:600;">방문지수: {score:.1f}점</span>
+</div>
+<div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
+• <strong>방문 통계:</strong> 소셜 버즈 및 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
+• <strong>주요 리뷰 내용 & 연관 해시태그:</strong> {kws_str}
+</div>
+</div>
+"""
                 
             insights_html += "</div>"
             st.markdown(insights_html, unsafe_allow_html=True)
@@ -2815,35 +2815,44 @@ elif active_page == "vs":
             st.plotly_chart(fig_rv, use_container_width=True)
 
         with col2:
-            df_cmp_melt = pd.melt(
-                df_age_sel.reset_index(),
-                id_vars="연령대", value_vars=["관심도지수", "방문도지수"],
-                var_name="지표", value_name="지수"
+            fig_bar_cmp = go.Figure()
+            # Add Interest Index bar
+            fig_bar_cmp.add_trace(go.Bar(
+                x=df_age_sel.index,
+                y=df_age_sel["관심도지수"],
+                name="관심도",
+                marker_color=COLOR_YOUNG
+            ))
+            # Add Visit Index bar
+            fig_bar_cmp.add_trace(go.Bar(
+                x=df_age_sel.index,
+                y=df_age_sel["방문도지수"],
+                name="방문도",
+                marker_color=COLOR_OLD
+            ))
+            # Add Gap line
+            df_age_gap = df_age_sel.copy()
+            df_age_gap["Gap"] = df_age_gap["관심도지수"] - df_age_gap["방문도지수"]
+            fig_bar_cmp.add_trace(go.Scatter(
+                x=df_age_gap.index,
+                y=df_age_gap["Gap"],
+                name="격차 (관심-방문)",
+                mode="lines+markers+text",
+                line=dict(color="#EF4444", width=3, dash="dot"),
+                marker=dict(size=8, symbol="diamond"),
+                text=[f"{val:+.1f}" for val in df_age_gap["Gap"]],
+                textposition="top center"
+            ))
+            fig_bar_cmp.update_layout(
+                **LAYOUT_BASE,
+                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="bottom", y=1.02),
+                margin=dict(l=0, r=0, t=45, b=20),
+                title=dict(text=f"{sel_cmp} — 연령대별 관심도 vs 방문도 및 Gap", font_color="#1D4ED8")
             )
-            fig_bar_cmp = px.bar(
-                df_cmp_melt, x="연령대", y="지수", color="지표", barmode="group",
-                color_discrete_map={"관심도지수": COLOR_YOUNG, "방문도지수": COLOR_OLD},
-                template="plotly_white",
-                title=f"{sel_cmp} — 연령대별 관심도 vs 방문도"
-            )
-            fig_bar_cmp.update_layout(**LAYOUT_BASE, legend=dict(bgcolor="rgba(0,0,0,0)"), margin=dict(l=0, r=0, t=40, b=20))
             fig_bar_cmp.update_xaxes(gridcolor=GRID_COLOR)
             fig_bar_cmp.update_yaxes(gridcolor=GRID_COLOR)
             st.plotly_chart(fig_bar_cmp, use_container_width=True)
 
-            df_age_gap = df_age_sel.copy()
-            df_age_gap["Gap"] = df_age_gap["관심도지수"] - df_age_gap["방문도지수"]
-            fig_gap_d = px.bar(
-                df_age_gap.reset_index(), x="연령대", y="Gap",
-                color="Gap", color_continuous_scale="RdBu_r",
-                color_continuous_midpoint=0, template="plotly_white",
-                title=f"{sel_cmp} — 연령대별 관심 - 방문 Gap"
-            )
-            fig_gap_d.add_hline(y=0, line_color="rgba(0,0,0,0.2)")
-            fig_gap_d.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=0, t=40, b=20))
-            fig_gap_d.update_xaxes(gridcolor=GRID_COLOR)
-            fig_gap_d.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig_gap_d, use_container_width=True)
 
         st.markdown(f"""
         <div style="background-color:#F5F3FF; border-left:4px solid #8B5CF6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
