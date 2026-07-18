@@ -14,6 +14,7 @@ import numpy as np
 import os
 import sqlite3
 import json
+import re
 
 # ─────────────────────────────────────────────────────────
 # 페이지 기본 설정
@@ -525,126 +526,148 @@ def get_integrated_data():
         except:
             return 0
 
-    # Initialize OTA stats container
-    ota_data = {r: {"kkday_ratings": [], "kkday_reviews": 0, "gyg_ratings": [], "gyg_reviews": 0, "creatrip_ratings": [], "creatrip_reviews": 0} for r in REGIONS}
+    # Load Instagram Data
+    insta_counts = {r: 0 for r in REGIONS}
+    insta_ratings = {r: 3.5 for r in REGIONS}
+    insta_path = os.path.join(current_dir, "instagram_korea_local_data.csv")
+    if not os.path.exists(insta_path):
+        insta_path = "instagram_korea_local_data.csv"
+    if os.path.exists(insta_path):
+        try:
+            df_insta = pd.read_csv(insta_path)
+            df_insta['caption'] = df_insta['caption'].fillna('')
+            df_insta['inputQuery'] = df_insta['inputQuery'].fillna('')
+            
+            HASHTAG_TO_REGION = {
+                "gyeongju": "경상북도", "gyeongjutrip": "경상북도", "hanokstay": "경상북도",
+                "gangneung": "강원특별자치도", "yangyang": "강원특별자치도", "koreasurfing": "강원특별자치도",
+                "jeonju": "전북특별자치도", "jeonjuhanokvillage": "전북특별자치도", "koreanfoodtrip": "전북특별자치도",
+                "suwon": "경기도", "suwonhwaseongfortress": "경기도", "starfieldsuwon": "경기도"
+            }
+            df_insta['지역'] = df_insta['inputQuery'].map(HASHTAG_TO_REGION).fillna('기타')
+            
+            def calculate_sentiment_rating(text):
+                if not isinstance(text, str):
+                    return 3.5
+                rating = 3.5
+                pos_words = ["great", "delicious", "good", "nice", "amazing", "wonderful", "perfect", "loved", "friendly", "best", "yummy", "맛있", "최고", "좋", "친절", "superb"]
+                text_lower = text.lower()
+                for word in pos_words:
+                    if word in text_lower:
+                        rating += 1.0
+                        break
+                if len(text) > 50:
+                    rating += 0.5
+                return min(rating, 5.0)
+                
+            df_insta['rating'] = df_insta['caption'].apply(calculate_sentiment_rating)
+            for r in REGIONS:
+                subset = df_insta[df_insta['지역'] == r]
+                if not subset.empty:
+                    insta_counts[r] = len(subset)
+                    insta_ratings[r] = subset['rating'].mean()
+        except:
+            pass
 
-    # Load KKday database
+    # Load CatchTable & Naver Map Data
+    catch_counts = {r: 0 for r in REGIONS}
+    catch_ratings = {r: 3.5 for r in REGIONS}
+    naver_counts = {r: 0 for r in REGIONS}
+    naver_ratings = {r: 3.5 for r in REGIONS}
+    
+    foreign_path = os.path.join(current_dir, "foreign_dashboard_data.csv")
+    if not os.path.exists(foreign_path):
+        foreign_path = "foreign_dashboard_data.csv"
+    if os.path.exists(foreign_path):
+        try:
+            df_foreign = pd.read_csv(foreign_path)
+            
+            def calculate_sentiment_rating(text):
+                if not isinstance(text, str):
+                    return 3.5
+                rating = 3.5
+                pos_words = ["great", "delicious", "good", "nice", "amazing", "wonderful", "perfect", "loved", "friendly", "best", "yummy", "맛있", "최고", "좋", "친절", "superb"]
+                text_lower = text.lower()
+                for word in pos_words:
+                    if word in text_lower:
+                        rating += 1.0
+                        break
+                if len(text) > 50:
+                    rating += 0.5
+                return min(rating, 5.0)
+
+            df_foreign['rating'] = df_foreign['review_text'].apply(calculate_sentiment_rating)
+            df_foreign['지역'] = df_foreign['city'].apply(get_region_from_text)
+            for r in REGIONS:
+                c_subset = df_foreign[(df_foreign['지역'] == r) & (df_foreign['source'] == 'CatchTable Global')]
+                if not c_subset.empty:
+                    catch_counts[r] = len(c_subset)
+                    catch_ratings[r] = c_subset['rating'].mean()
+                n_subset = df_foreign[(df_foreign['지역'] == r) & (df_foreign['source'] == 'Naver Map')]
+                if not n_subset.empty:
+                    naver_counts[r] = len(n_subset)
+                    naver_ratings[r] = n_subset['rating'].mean()
+        except:
+            pass
+
+    # 7, 8, 9. KKday, GetYourGuide, Creatrip databases
+    ota_data = {r: {"kkday_ratings": [], "kkday_reviews": 0, "gyg_ratings": [], "gyg_reviews": 0, "creatrip_ratings": [], "creatrip_reviews": 0} for r in REGIONS}
+    
     kkd_db = os.path.join(data_dir, "kkday_products.db")
     if os.path.exists(kkd_db):
-        conn = sqlite3.connect(kkd_db)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num 
-            FROM kkday_products p
-            LEFT JOIN kkday_product_details d ON p.prod_mid = d.prod_mid
-        """)
-        for name, destinations_str, guide_langs, score_raw, rec_num_raw in cursor.fetchall():
-            is_korean_only = False
-            if guide_langs:
-                try:
-                    langs = json.loads(guide_langs)
-                    if isinstance(langs, list) and len(langs) == 1 and langs[0] == 'ko':
-                        is_korean_only = True
-                except:
-                    if guide_langs == '["ko"]':
-                        is_korean_only = True
-            if "한국인 전용" in name:
-                is_korean_only = True
-            if is_korean_only:
-                continue
-                
-            region = None
-            if destinations_str:
-                try:
-                    dests = json.loads(destinations_str)
-                    for d in dests:
-                        d_name = d.get('name', '')
-                        r = get_region_from_text(d_name)
-                        if r:
-                            if r == "EXCLUDE":
-                                region = "EXCLUDE"
-                                break
-                            region = r
-                except:
-                    pass
-            if not region:
+        try:
+            conn = sqlite3.connect(kkd_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num FROM kkday_products p LEFT JOIN kkday_product_details d ON p.prod_mid = d.prod_mid")
+            for name, destinations_str, guide_langs, score_raw, rec_num_raw in cursor.fetchall():
                 region = get_region_from_text(name)
-                
-            if region and region != "EXCLUDE":
-                rating = clean_rating(score_raw)
-                reviews = clean_reviews(rec_num_raw)
-                if rating > 0:
-                    ota_data[region]["kkday_ratings"].append(rating)
-                ota_data[region]["kkday_reviews"] += reviews
-        conn.close()
+                if region and region != "EXCLUDE":
+                    rating = clean_rating(score_raw)
+                    reviews = clean_reviews(rec_num_raw)
+                    if rating > 0:
+                        ota_data[region]["kkday_ratings"].append(rating)
+                    ota_data[region]["kkday_reviews"] += reviews
+            conn.close()
+        except:
+            pass
 
-    # Load GetYourGuide database
     gyg_db = os.path.join(data_dir, "getyourguide.db")
     if os.path.exists(gyg_db):
-        conn = sqlite3.connect(gyg_db)
-        cursor = conn.cursor()
-        cursor.execute("SELECT title, rating, reviews, region FROM activities")
-        for title, rating_raw, reviews_raw, region_raw in cursor.fetchall():
-            region = get_region_from_text(region_raw)
-            if not region:
-                region = get_region_from_text(title)
-            if region and region != "EXCLUDE":
-                rating = clean_rating(rating_raw)
-                reviews = clean_reviews(reviews_raw)
-                if rating > 0:
-                    ota_data[region]["gyg_ratings"].append(rating)
-                ota_data[region]["gyg_reviews"] += reviews
-        conn.close()
+        try:
+            conn = sqlite3.connect(gyg_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT title, rating, reviews, region FROM activities")
+            for title, rating_raw, reviews_raw, region_raw in cursor.fetchall():
+                region = get_region_from_text(region_raw) or get_region_from_text(title)
+                if region and region != "EXCLUDE":
+                    rating = clean_rating(rating_raw)
+                    reviews = clean_reviews(reviews_raw)
+                    if rating > 0:
+                        ota_data[region]["gyg_ratings"].append(rating)
+                    ota_data[region]["gyg_reviews"] += reviews
+            conn.close()
+        except:
+            pass
 
-    # Load Creatrip database
     ct_db = os.path.join(data_dir, "creatrip_products.db")
     if os.path.exists(ct_db):
-        conn = sqlite3.connect(ct_db)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num 
-            FROM creatrip_products p
-            LEFT JOIN creatrip_product_details d ON p.prod_mid = d.prod_mid
-        """)
-        for name, destinations_str, guide_langs, score_raw, rec_num_raw in cursor.fetchall():
-            is_korean_only = False
-            if guide_langs:
-                try:
-                    langs = json.loads(guide_langs)
-                    if isinstance(langs, list) and len(langs) == 1 and langs[0] == 'ko':
-                        is_korean_only = True
-                except:
-                    if guide_langs == '["ko"]':
-                        is_korean_only = True
-            if is_korean_only:
-                continue
-                
-            region = None
-            if destinations_str:
-                try:
-                    dests = json.loads(destinations_str)
-                    for d in dests:
-                        d_name = d.get('name', '')
-                        r = get_region_from_text(d_name)
-                        if r:
-                            if r == "EXCLUDE":
-                                region = "EXCLUDE"
-                                break
-                            region = r
-                except:
-                    pass
-            if not region:
+        try:
+            conn = sqlite3.connect(ct_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num FROM creatrip_products p LEFT JOIN creatrip_product_details d ON p.prod_mid = d.prod_mid")
+            for name, destinations_str, guide_langs, score_raw, rec_num_raw in cursor.fetchall():
                 region = get_region_from_text(name)
-                
-            if region and region != "EXCLUDE":
-                rating = clean_rating(score_raw)
-                reviews = clean_reviews(rec_num_raw)
-                if rating > 0:
-                    ota_data[region]["creatrip_ratings"].append(rating)
-                ota_data[region]["creatrip_reviews"] += reviews
-        conn.close()
+                if region and region != "EXCLUDE":
+                    rating = clean_rating(score_raw)
+                    reviews = clean_reviews(rec_num_raw)
+                    if rating > 0:
+                        ota_data[region]["creatrip_ratings"].append(rating)
+                    ota_data[region]["creatrip_reviews"] += reviews
+            conn.close()
+        except:
+            pass
 
-    # KTO visitor counts (excluding Koreans)
+    # 10. KTO visitor counts (excluding Koreans)
     kto_visitor_data = {
         "경기도": 2150000, "인천광역시": 1250000, "강원특별자치도": 540000, "경상북도": 200000,
         "전북특별자치도": 110000, "대구광역시": 90000, "충청남도": 85000, "경상남도": 80000,
@@ -652,61 +675,847 @@ def get_integrated_data():
         "울산광역시": 30000, "세종특별자치시": 10000
     }
 
-    # Consolidated Calculation using Medians (excluding zeroes/empty for ratings, keeping for counts)
+    # Consolidated Calculations for General Population
+    # 10 Visit Counts
+    raw_visit_counts = {}
+    for r in REGIONS:
+        raw_visit_counts[r] = {
+            "insta": insta_counts.get(r, 0),
+            "catch": catch_counts.get(r, 0),
+            "naver": naver_counts.get(r, 0),
+            "trends": google_trends_data.get(r, 0.0), 
+            "ta": ta_reviews_count.get(r, 0),
+            "tumblr": tumblr_visits_count.get(r, 0),
+            "kkd": ota_data[r]["kkday_reviews"],
+            "gyg": ota_data[r]["gyg_reviews"],
+            "ct": ota_data[r]["creatrip_reviews"],
+            "kto": kto_visitor_data.get(r, 0)
+        }
+        
+    keys = ["insta", "catch", "naver", "trends", "ta", "tumblr", "kkd", "gyg", "ct", "kto"]
+    max_counts = {k: max(raw_visit_counts[r][k] for r in REGIONS) or 1.0 for k in keys}
+    
     results = []
     for r in REGIONS:
-        # --- INTEREST (Google Trends, TripAdvisor, Tumblr, KKday, GetYourGuide, Creatrip ratings) ---
-        g_score = (google_trends_data.get(r, 0.0) / max(google_trends_data.values())) * 100.0
+        # --- 10 INTEREST SOURCES (scaled to 100) ---
+        v1 = (insta_ratings.get(r, 3.5) / 5.0) * 100.0
+        v2 = (catch_ratings.get(r, 3.5) / 5.0) * 100.0
+        v3 = (naver_ratings.get(r, 3.5) / 5.0) * 100.0
         
-        ta_rating = ta_ratings.get(r, 3.5)
-        ta_score = (ta_rating / 5.0) * 100.0
+        max_trends = max(google_trends_data.values())
+        v4 = (google_trends_data.get(r, 0.0) / max_trends) * 100.0
         
-        tb_score = (tumblr_scores.get(r, 3.0) / 5.0) * 100.0
+        v5 = (ta_ratings.get(r, 3.5) / 5.0) * 100.0
+        v6 = (tumblr_scores.get(r, 3.0) / 5.0) * 100.0
         
-        kkd_ratings = ota_data[r]["kkday_ratings"]
-        kkd_avg = np.mean(kkd_ratings) if kkd_ratings else 3.5
-        kkd_score = (kkd_avg / 5.0) * 100.0
+        kkd_ratings_list = ota_data[r]["kkday_ratings"]
+        v7 = (np.mean(kkd_ratings_list) / 5.0) * 100.0 if kkd_ratings_list else 70.0
         
-        gyg_ratings = ota_data[r]["gyg_ratings"]
-        gyg_avg = np.mean(gyg_ratings) if gyg_ratings else 3.5
-        gyg_score = (gyg_avg / 5.0) * 100.0
+        gyg_ratings_list = ota_data[r]["gyg_ratings"]
+        v8 = (np.mean(gyg_ratings_list) / 5.0) * 100.0 if gyg_ratings_list else 70.0
         
-        ct_ratings = ota_data[r]["creatrip_ratings"]
-        ct_avg = np.mean(ct_ratings) if ct_ratings else 3.5
-        ct_score = (ct_avg / 5.0) * 100.0
+        ct_ratings_list = ota_data[r]["creatrip_ratings"]
+        v9 = (np.mean(ct_ratings_list) / 5.0) * 100.0 if ct_ratings_list else 70.0
         
-        interest_median = np.median([m for m in [g_score, ta_score, tb_score, kkd_score, gyg_score, ct_score] if m > 0.0])
+        max_kto = max(kto_visitor_data.values())
+        v10 = (kto_visitor_data.get(r, 0) / max_kto) * 100.0
         
-        # --- VISIT (KTO, TripAdvisor reviews, Tumblr reviews, KKday reviews, GetYourGuide reviews, Creatrip reviews) ---
-        kto_score = (kto_visitor_data.get(r, 0.0) / max(kto_visitor_data.values())) * 100.0
-        ta_rev_score = (ta_reviews_count.get(r, 0.0) / max(ta_reviews_count.values())) * 100.0
-        tb_rev_score = 100.0 if tumblr_visits_count.get(r, 0) > 0 else 0.0
+        interest_scores = [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10]
+        # Median of non-zero interest scores
+        valid_interest = [s for s in interest_scores if s > 0.0]
+        interest_median = np.median(valid_interest) if valid_interest else 70.0
         
-        max_kkd_rev = max(ota_data[x]["kkday_reviews"] for x in REGIONS) or 1.0
-        kkd_rev_score = (ota_data[r]["kkday_reviews"] / max_kkd_rev) * 100.0
-        
-        max_gyg_rev = max(ota_data[x]["gyg_reviews"] for x in REGIONS) or 1.0
-        gyg_rev_score = (ota_data[r]["gyg_reviews"] / max_gyg_rev) * 100.0
-        
-        max_ct_rev = max(ota_data[x]["creatrip_reviews"] for x in REGIONS) or 1.0
-        ct_rev_score = (ota_data[r]["creatrip_reviews"] / max_ct_rev) * 100.0
-        
-        visit_scores = [kto_score, ta_rev_score, tb_rev_score, kkd_rev_score, gyg_rev_score, ct_rev_score]
-        valid_visit_scores = [s for s in visit_scores if s > 0.0]
-        visit_median = np.median(valid_visit_scores) if valid_visit_scores else 0.0
+        # --- 10 VISIT SOURCES (scaled to 100) ---
+        visit_scores = []
+        for k in keys:
+            norm_val = (raw_visit_counts[r][k] / max_counts[k]) * 100.0
+            visit_scores.append(norm_val)
+            
+        # Median of non-zero visit scores
+        valid_visit = [s for s in visit_scores if s > 0.0]
+        visit_median = np.median(valid_visit) if valid_visit else 0.0
         
         results.append({
             "region": r,
             "interest_median": round(interest_median, 1),
             "visit_median": round(visit_median, 1)
         })
-
+        
     return pd.DataFrame(results)
 
 # Load dynamic calculated values
 df_integrated = get_integrated_data()
 interest_map = df_integrated.set_index("region")["interest_median"].to_dict()
 visit_map = df_integrated.set_index("region")["visit_median"].to_dict()
+
+# ─────────────────────────────────────────────────────────
+# 청년층 (10대~40대) 10대 데이터 통합 및 중간값 산출 함수
+# ─────────────────────────────────────────────────────────
+@st.cache_data
+def get_youth_integrated_data():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if os.path.exists(os.path.join(current_dir, "data")):
+        data_dir = os.path.join(current_dir, "data")
+    elif os.path.exists(os.path.join(os.path.dirname(current_dir), "data")):
+        data_dir = os.path.join(os.path.dirname(current_dir), "data")
+    else:
+        data_dir = os.path.join(current_dir, "★korea-trip-data", "data")
+        
+    # Helper to parse text to standard region
+    def get_region_from_text(name):
+        if not name:
+            return None
+        for kw in EXCLUDE_KWS:
+            if kw in name:
+                return "EXCLUDE"
+        for r, kw_list in REGIONS_MAP.items():
+            for kw in kw_list:
+                if kw in name:
+                    return r
+        return None
+
+    def clean_rating(val):
+        if not val:
+            return 0.0
+        try:
+            val_str = str(val).strip().replace('/5', '')
+            if val_str == 'N/A' or val_str == '':
+                return 0.0
+            return float(val_str)
+        except:
+            return 0.0
+
+    def clean_reviews(val):
+        if not val:
+            return 0
+        try:
+            val_str = str(val).strip().replace(',', '')
+            if val_str == 'N/A' or val_str == '':
+                return 0
+            return int(float(val_str))
+        except:
+            return 0
+
+    def calculate_sentiment_rating(text):
+        if not isinstance(text, str):
+            return 3.5
+        rating = 3.5
+        pos_words = ["great", "delicious", "good", "nice", "amazing", "wonderful", "perfect", "loved", "friendly", "best", "yummy", "맛있", "최고", "좋", "친절", "superb"]
+        text_lower = text.lower()
+        for word in pos_words:
+            if word in text_lower:
+                rating += 1.0
+                break
+        if len(text) > 50:
+            rating += 0.5
+        return min(rating, 5.0)
+
+    # 1. Instagram
+    insta_path = os.path.join(os.path.dirname(data_dir), "instagram_korea_local_data.csv")
+    if not os.path.exists(insta_path):
+        insta_path = os.path.join(current_dir, "instagram_korea_local_data.csv")
+        
+    insta_counts = {r: 0 for r in REGIONS}
+    insta_ratings = {r: 3.5 for r in REGIONS}
+    if os.path.exists(insta_path):
+        try:
+            df_insta = pd.read_csv(insta_path)
+            df_insta['caption'] = df_insta['caption'].fillna('')
+            df_insta['inputQuery'] = df_insta['inputQuery'].fillna('')
+            HASHTAG_TO_REGION = {
+                "gyeongju": "경상북도", "gyeongjutrip": "경상북도", "hanokstay": "경상북도",
+                "gangneung": "강원특별자치도", "yangyang": "강원특별자치도", "koreasurfing": "강원특별자치도",
+                "jeonju": "전북특별자치도", "jeonjuhanokvillage": "전북특별자치도", "koreanfoodtrip": "전북특별자치도",
+                "suwon": "경기도", "suwonhwaseongfortress": "경기도", "starfieldsuwon": "경기도"
+            }
+            df_insta['지역'] = df_insta['inputQuery'].map(HASHTAG_TO_REGION).fillna('기타')
+            df_insta['rating'] = df_insta['caption'].apply(calculate_sentiment_rating)
+            for r in REGIONS:
+                subset = df_insta[df_insta['지역'] == r]
+                if not subset.empty:
+                    insta_counts[r] = len(subset)
+                    insta_ratings[r] = subset['rating'].mean()
+        except:
+            pass
+
+    # 2 & 3. CatchTable & Naver Map
+    foreign_path = os.path.join(os.path.dirname(data_dir), "foreign_dashboard_data.csv")
+    if not os.path.exists(foreign_path):
+        foreign_path = os.path.join(current_dir, "foreign_dashboard_data.csv")
+        
+    catch_counts = {r: 0 for r in REGIONS}
+    catch_ratings = {r: 3.5 for r in REGIONS}
+    naver_counts = {r: 0 for r in REGIONS}
+    naver_ratings = {r: 3.5 for r in REGIONS}
+    if os.path.exists(foreign_path):
+        try:
+            df_foreign = pd.read_csv(foreign_path)
+            df_foreign['rating'] = df_foreign['review_text'].apply(calculate_sentiment_rating)
+            df_foreign['지역'] = df_foreign['city'].apply(get_region_from_text)
+            for r in REGIONS:
+                c_subset = df_foreign[(df_foreign['지역'] == r) & (df_foreign['source'] == 'CatchTable Global')]
+                if not c_subset.empty:
+                    catch_counts[r] = len(c_subset)
+                    catch_ratings[r] = c_subset['rating'].mean()
+                n_subset = df_foreign[(df_foreign['지역'] == r) & (df_foreign['source'] == 'Naver Map')]
+                if not n_subset.empty:
+                    naver_counts[r] = len(n_subset)
+                    naver_ratings[r] = n_subset['rating'].mean()
+        except:
+            pass
+
+    # 4. Google Trends (from regional_google_trends.csv)
+    google_trends_data = {
+        "인천광역시": 19.58, "대구광역시": 7.04, "광주광역시": 3.81, "대전광역시": 3.34, "울산광역시": 1.02, "세종특별자치시": 0.77,
+        "경기도": 3.91, "강원특별자치도": 0.70, "충청북도": 11.45, "충청남도": 16.62, "전북특별자치도": 35.53,
+        "전라남도": 5.34, "경상북도": 2.28, "경상남도": 3.77
+    }
+
+    # 5. TripAdvisor
+    ta_ratings = {
+        "인천광역시": 4.4, "대구광역시": 4.5, "광주광역시": 4.4, "대전광역시": 4.5, "울산광역시": 4.3, "세종특별자치시": 4.3,
+        "경기도": 4.5, "강원특별자치도": 4.6, "충청북도": 4.3, "충청남도": 4.4, "전북특별자치도": 4.6, "전라남도": 4.6,
+        "경상북도": 4.7, "경상남도": 4.5
+    }
+    ta_reviews_count = {
+        "경기도": 780, "인천광역시": 540, "강원특별자치도": 650, "경상북도": 560,
+        "전북특별자치도": 450, "대구광역시": 380, "충청남도": 310, "경상남도": 490,
+        "전라남도": 410, "대전광역시": 340, "광주광역시": 290, "충청북도": 280,
+        "울산광역시": 250, "세종특별자치시": 150
+    }
+
+    # 6. Tumblr
+    tumblr_scores = {r: 3.0 for r in REGIONS}
+    tumblr_scores["인천광역시"] = 4.0
+    tumblr_visits_count = {r: 0 for r in REGIONS}
+    tumblr_visits_count["인천광역시"] = 1
+
+    # 7, 8, 9. KKday, GetYourGuide, Creatrip
+    ota_data = {r: {"kkday_ratings": [], "kkday_reviews": 0, "gyg_ratings": [], "gyg_reviews": 0, "creatrip_ratings": [], "creatrip_reviews": 0} for r in REGIONS}
+    
+    kkd_db = os.path.join(data_dir, "kkday_products.db")
+    if os.path.exists(kkd_db):
+        try:
+            conn = sqlite3.connect(kkd_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num FROM kkday_products p LEFT JOIN kkday_product_details d ON p.prod_mid = d.prod_mid")
+            for name, destinations_str, guide_langs, score_raw, rec_num_raw in cursor.fetchall():
+                region = get_region_from_text(name)
+                if region and region != "EXCLUDE":
+                    rating = clean_rating(score_raw)
+                    reviews = clean_reviews(rec_num_raw)
+                    if rating > 0:
+                        ota_data[region]["kkday_ratings"].append(rating)
+                    ota_data[region]["kkday_reviews"] += reviews
+            conn.close()
+        except:
+            pass
+
+    gyg_db = os.path.join(data_dir, "getyourguide.db")
+    if os.path.exists(gyg_db):
+        try:
+            conn = sqlite3.connect(gyg_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT title, rating, reviews, region FROM activities")
+            for title, rating_raw, reviews_raw, region_raw in cursor.fetchall():
+                region = get_region_from_text(region_raw) or get_region_from_text(title)
+                if region and region != "EXCLUDE":
+                    rating = clean_rating(rating_raw)
+                    reviews = clean_reviews(reviews_raw)
+                    if rating > 0:
+                        ota_data[region]["gyg_ratings"].append(rating)
+                    ota_data[region]["gyg_reviews"] += reviews
+            conn.close()
+        except:
+            pass
+
+    ct_db = os.path.join(data_dir, "creatrip_products.db")
+    if os.path.exists(ct_db):
+        try:
+            conn = sqlite3.connect(ct_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT p.name, p.destinations, d.guide_langs, d.rec_avg_score, d.rec_num FROM creatrip_products p LEFT JOIN creatrip_product_details d ON p.prod_mid = d.prod_mid")
+            for name, destinations_str, guide_langs, score_raw, rec_num_raw in cursor.fetchall():
+                region = get_region_from_text(name)
+                if region and region != "EXCLUDE":
+                    rating = clean_rating(score_raw)
+                    reviews = clean_reviews(rec_num_raw)
+                    if rating > 0:
+                        ota_data[region]["creatrip_ratings"].append(rating)
+                    ota_data[region]["creatrip_reviews"] += reviews
+            conn.close()
+        except:
+            pass
+
+    # 10. KTO
+    kto_visitor_data = {
+        "경기도": 2150000, "인천광역시": 1250000, "강원특별자치도": 540000, "경상북도": 200000,
+        "전북특별자치도": 110000, "대구광역시": 90000, "충청남도": 85000, "경상남도": 80000,
+        "전라남도": 75000, "대전광역시": 70000, "광주광역시": 50000, "충청북도": 45000,
+        "울산광역시": 30000, "세종특별자치시": 10000
+    }
+
+    # Consolidated Calculations for Youth (10s ~ 40s)
+    results = []
+    
+    # Pre-calculate max counts for visit normalization
+    # Apply Youth Visit Ratio (YVR) first
+    yvr_map = {r: sum(AGE_VISIT_RATIO[r][0:4]) for r in REGIONS}
+    yir_map = {r: sum(AGE_INTEREST_RATIO[r][0:4]) for r in REGIONS}
+    
+    # 10 Visit Counts
+    raw_visit_counts = {}
+    for r in REGIONS:
+        raw_visit_counts[r] = {
+            "insta": insta_counts.get(r, 0),
+            "catch": catch_counts.get(r, 0),
+            "naver": naver_counts.get(r, 0),
+            "trends": google_trends_data.get(r, 0.0), 
+            "ta": ta_reviews_count.get(r, 0),
+            "tumblr": tumblr_visits_count.get(r, 0),
+            "kkd": ota_data[r]["kkday_reviews"],
+            "gyg": ota_data[r]["gyg_reviews"],
+            "ct": ota_data[r]["creatrip_reviews"],
+            "kto": kto_visitor_data.get(r, 0)
+        }
+    
+    # Youth Visit Counts (Count * YVR)
+    youth_visit_counts = {}
+    for r in REGIONS:
+        yvr = yvr_map[r]
+        youth_visit_counts[r] = {k: v * yvr for k, v in raw_visit_counts[r].items()}
+        
+    # Find maxes across regions for normalization
+    keys = ["insta", "catch", "naver", "trends", "ta", "tumblr", "kkd", "gyg", "ct", "kto"]
+    max_youth_counts = {k: max(youth_visit_counts[r][k] for r in REGIONS) or 1.0 for k in keys}
+    
+    for r in REGIONS:
+        yir = yir_map[r]
+        
+        # --- 10 INTEREST SOURCES (1 to 5 scale) ---
+        v1 = insta_ratings.get(r, 3.5)
+        v2 = catch_ratings.get(r, 3.5)
+        v3 = naver_ratings.get(r, 3.5)
+        max_trends = max(google_trends_data.values())
+        v4 = (google_trends_data.get(r, 0.0) / max_trends) * 4.0 + 1.0
+        v5 = ta_ratings.get(r, 3.5)
+        v6 = tumblr_scores.get(r, 3.0)
+        
+        kkd_ratings_list = ota_data[r]["kkday_ratings"]
+        v7 = np.mean(kkd_ratings_list) if kkd_ratings_list else 3.5
+        
+        gyg_ratings_list = ota_data[r]["gyg_ratings"]
+        v8 = np.mean(gyg_ratings_list) if gyg_ratings_list else 3.5
+        
+        ct_ratings_list = ota_data[r]["creatrip_ratings"]
+        v9 = np.mean(ct_ratings_list) if ct_ratings_list else 3.5
+        
+        max_kto = max(kto_visitor_data.values())
+        v10 = (kto_visitor_data.get(r, 0) / max_kto) * 4.0 + 1.0
+        
+        interest_scores = [v1, v2, v3, v4, v5, v6, v7, v8, v9, v10]
+        # Multiply each by Youth Interest Ratio to get youth interest rating
+        youth_interest_scores = [score * yir for score in interest_scores]
+        interest_median = np.median(youth_interest_scores)
+        
+        # --- 10 VISIT SOURCES (normalized to 0-5 scale) ---
+        visit_scores_norm = []
+        for k in keys:
+            norm_val = (youth_visit_counts[r][k] / max_youth_counts[k]) * 5.0
+            visit_scores_norm.append(norm_val)
+            
+        # Median of these 10 scores (excluding zero elements)
+        valid_visit_scores = [s for s in visit_scores_norm if s > 0.0]
+        visit_median = np.median(valid_visit_scores) if valid_visit_scores else 0.0
+        
+        results.append({
+            "region": r,
+            "interest_median": round(interest_median, 3),
+            "visit_median": round(visit_median, 3)
+        })
+        
+    return pd.DataFrame(results)
+
+df_youth_integrated = get_youth_integrated_data()
+
+# ─────────────────────────────────────────────────────────
+# 인스타그램 데이터 로드 함수 (글로벌)
+# ─────────────────────────────────────────────────────────
+@st.cache_data
+def load_instagram_data():
+    csv_path = "instagram_korea_local_data.csv"
+    if os.path.exists(csv_path):
+        try:
+            df = pd.read_csv(csv_path)
+            # 결측치 처리 및 음수 보정
+            df['likesCount'] = df['likesCount'].fillna(0).astype(int).clip(lower=0)
+            df['commentsCount'] = df['commentsCount'].fillna(0).astype(int).clip(lower=0)
+            df['caption'] = df['caption'].fillna('')
+            df['inputQuery'] = df['inputQuery'].fillna('')
+            
+            # 해시태그 -> 지역 매핑
+            HASHTAG_TO_REGION = {
+                "gyeongju": "경상북도", "gyeongjutrip": "경상북도", "hanokstay": "경상북도",
+                "gangneung": "강원특별자치도", "yangyang": "강원특별자치도", "koreasurfing": "강원특별자치도",
+                "jeonju": "전북특별자치도", "jeonjuhanokvillage": "전북특별자치도", "koreanfoodtrip": "전북특별자치도",
+                "suwon": "경기도", "suwonhwaseongfortress": "경기도", "starfieldsuwon": "경기도"
+            }
+            df['지역'] = df['inputQuery'].map(HASHTAG_TO_REGION).fillna('기타')
+            df['engagement'] = df['likesCount'] + df['commentsCount']
+            return df
+        except Exception:
+            return pd.DataFrame()
+    return pd.DataFrame()
+
+
+
+# ─────────────────────────────────────────────────────────
+# 시/군 단위 관광 키워드 매핑 및 관심도 연산
+# ─────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────
+# 시/군/구 단위 관광 키워드 매핑 및 관심도/방문도 연산
+# ─────────────────────────────────────────────────────────
+CITY_KEYWORDS = {
+    "경기도": {
+        "수원시": ["수원", "Starfield Suwon"],
+        "가평군": ["가평", "아침고요수목원", "쁘띠프랑스", "이탈리아 빌리지"],
+        "파주시": ["파주", "DMZ", "비무장지대", "제3땅굴", "도라산", "임진각"],
+        "용인시": ["에버랜드", "용인"],
+        "포천시": ["포천"],
+        "양평군": ["양평"],
+        "이천시": ["이천", "지산"],
+        "광명시": ["광명"],
+        "김포시": ["김포"],
+        "양주시": ["양주"],
+        "화성시": ["제부도", "화성"]
+    },
+    "강원특별자치도": {
+        "강릉시": ["강릉", "주문진"],
+        "춘천시": ["춘천", "남이섬", "강촌레일바이크", "삼악산"],
+        "속초시": ["속초", "설악산", "설악 케이블카"],
+        "원주시": ["원주"],
+        "평창군": ["평창", "알파카월드", "오크밸리"],
+        "양양군": ["양양", "koreasurfing"],
+        "화천군": ["화천"]
+    },
+    "인천광역시": {
+        "중구 (영종/공항)": ["영종", "영종도", "인천공항", "신포", "신포국제시장", "월미도", "개항장", "차이나타운", "동인천", "을왕리"],
+        "연수구 (송도)": ["송도", "송도 센트럴파크", "스퀘어원", "트리플스트리트"],
+        "강화군": ["강화", "강화도", "전등사"],
+        "서구 (청라)": ["청라", "서구", "검단"],
+        "남동구 (소래)": ["소래", "소래포구", "구월", "구월동"],
+        "부평구": ["부평", "부평역"]
+    },
+    "대구광역시": {
+        "중구 (동성로)": ["동성로", "서문시장", "반월당", "계산성당", "김광석길", "근대골목", "대구"],
+        "달성군": ["달성", "사문진", "비슬산"],
+        "동구 (팔공산)": ["동대구", "팔공산", "대구공항", "아양기차"],
+        "수성구 (수성못)": ["수성못", "수성구", "들안길"],
+        "달서구 (이월드)": ["이월드", "두류공원", "달서구"]
+    },
+    "대전광역시": {
+        "유성구 (유성온천)": ["유성", "유성온천", "카이스트", "KAIST", "충남대"],
+        "중구 (성심당)": ["성심당", "으능정이", "은행동", "뿌리공원", "오월드"],
+        "서구 (둔산)": ["둔산", "둔산동", "한밭수목원", "시청", "대전"],
+        "동구 (대전역)": ["대전역", "소제동", "식장산", "대청호"],
+        "대덕구 (대청댐)": ["대청댐", "신탄진", "계족산"]
+    },
+    "광주광역시": {
+        "동구 (충장로)": ["충장로", "아시아문화전당", "ACC", "무등산", "광주"],
+        "서구 (상무지구)": ["상무지구", "금호월드", "풍암호수"],
+        "남구 (양림동)": ["양림동", "펭귄마을", "사직공원"],
+        "북구 (비엔날레)": ["비엔날레", "중외공원", "국립광주박물관"],
+        "광산구 (송정역)": ["송정", "송정역", "1913송정역"]
+    },
+    "울산광역시": {
+        "울주군 (간절곶)": ["간절곶", "울주", "영남알프스"],
+        "남구 (장생포)": ["삼산동", "태화강 동굴피아", "장생포", "고래", "울산"],
+        "중구 (태화강)": ["태화강", "국가정원", "십리대숲"],
+        "동구 (대왕암)": ["대왕암", "대왕암공원", "일산해수욕장", "슬도"]
+    },
+    "세종특별자치시": {
+        "세종시 본동 (호수공원)": ["호수공원", "세종호수", "수목원", "정부세종청사"],
+        "조치원읍": ["조치원"],
+        "금남면/장군면": ["금남", "장군", "영평사", "베어트리"]
+    },
+    "경상북도": {
+        "경주시": ["경주", "석굴암", "불국사", "첨성대"],
+        "안동시": ["안동"],
+        "포항시": ["포항"],
+        "봉화군": ["봉화"]
+    },
+    "전북특별자치도": {
+        "전주시": ["전주"],
+        "익산시": ["익산"]
+    },
+    "전라남도": {
+        "여수시": ["여수"],
+        "순천시": ["순천"]
+    },
+    "경상남도": {
+        "김해시": ["김해"],
+        "창원시": ["창원", "진해"],
+        "진주시": ["진주"],
+        "통영시": ["통영", "스카이라인"],
+        "거제시": ["거제", "거제 케이블카"],
+        "남해군": ["남해"],
+        "밀양시": ["밀양"]
+    },
+    "충청남도": {
+        "아산시": ["아산"],
+        "보령시": ["보령"]
+    },
+    "충청북도": {
+        "단양군": ["단양"]
+    }
+}
+
+@st.cache_data
+def get_sigun_interest(province, age_group="전체"):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    if os.path.exists(os.path.join(current_dir, "data")):
+        data_dir = os.path.join(current_dir, "data")
+    elif os.path.exists(os.path.join(os.path.dirname(current_dir), "data")):
+        data_dir = os.path.join(os.path.dirname(current_dir), "data")
+    else:
+        data_dir = os.path.join(current_dir, "★korea-trip-data", "data")
+
+    cities = CITY_KEYWORDS.get(province, {})
+    if not cities:
+        return pd.DataFrame()
+        
+    def calculate_sentiment_rating(text):
+        if not isinstance(text, str):
+            return 3.5
+        rating = 3.5
+        pos_words = ["great", "delicious", "good", "nice", "amazing", "wonderful", "perfect", "loved", "friendly", "best", "yummy", "맛있", "최고", "좋", "친절", "superb"]
+        text_lower = text.lower()
+        for word in pos_words:
+            if word in text_lower:
+                rating += 1.0
+                break
+        if len(text) > 50:
+            rating += 0.5
+        return min(rating, 5.0)
+
+    city_ratings = {c: [] for c in cities}
+    city_counts = {c: 0 for c in cities}
+    
+    # For semantic age group weighting
+    target_kws_youth = ["cafe", "coffee", "food", "delicious", "beach", "ocean", "shopping", "art", "k-pop", "beauty", "cosmetics", "성심당", "에버랜드", "맛집", "카페", "쇼핑", "핫플", "인스타", "사진", "디저트"]
+    target_kws_old = ["nature", "mountain", "temple", "palace", "market", "park", "museum", "history", "traditional", "healing", "가족", "전통", "시장", "등산", "온천", "풍경", "휴식", "자연", "DMZ", "남이섬"]
+    
+    city_youth_hits = {c: 0 for c in cities}
+    city_old_hits = {c: 0 for c in cities}
+    
+    def track_age_hits(city, text):
+        text_lower = str(text).lower()
+        for kw in target_kws_youth:
+            if kw.lower() in text_lower:
+                city_youth_hits[city] += 1
+        for kw in target_kws_old:
+            if kw.lower() in text_lower:
+                city_old_hits[city] += 1
+
+    # 1. Instagram
+    df_insta = load_instagram_data()
+    if not df_insta.empty:
+        df_insta['rating'] = df_insta['caption'].apply(calculate_sentiment_rating)
+        for idx, row in df_insta.iterrows():
+            text = str(row['caption']) + " " + str(row['inputQuery'])
+            text_lower = text.lower()
+            for city, kws in cities.items():
+                matched = False
+                for kw in kws:
+                    if kw.lower() in text_lower:
+                        matched = True
+                        break
+                if matched:
+                    city_counts[city] += 1
+                    city_ratings[city].append(row['rating'])
+                    track_age_hits(city, text)
+                    break
+
+    # 2. CatchTable / Naver Map
+    foreign_path = os.path.join(current_dir, "foreign_dashboard_data.csv")
+    if not os.path.exists(foreign_path):
+        foreign_path = "foreign_dashboard_data.csv"
+    if os.path.exists(foreign_path):
+        try:
+            df_foreign = pd.read_csv(foreign_path)
+            df_foreign['rating'] = df_foreign['review_text'].apply(calculate_sentiment_rating)
+            df_foreign['city_clean'] = df_foreign['city'].fillna('')
+            for idx, row in df_foreign.iterrows():
+                text = row['city_clean'] + " " + str(row['review_text'])
+                text_lower = text.lower()
+                for city, kws in cities.items():
+                    matched = False
+                    for kw in kws:
+                        if kw.lower() in text_lower:
+                            matched = True
+                            break
+                    if matched:
+                        city_counts[city] += 1
+                        city_ratings[city].append(row['rating'])
+                        track_age_hits(city, text)
+                        break
+        except:
+            pass
+
+    # Helper cleaners
+    def clean_rating(val):
+        if not val:
+            return 0.0
+        try:
+            val_str = str(val).strip().replace('/5', '')
+            if val_str == 'N/A' or val_str == '':
+                return 0.0
+            return float(val_str)
+        except:
+            return 0.0
+
+    def clean_reviews(val):
+        if not val:
+            return 0
+        try:
+            val_str = str(val).strip().replace(',', '')
+            if val_str == 'N/A' or val_str == '':
+                return 0
+            return int(float(val_str))
+        except:
+            return 0
+
+    # 3. KKday, GYG, Creatrip
+    kkd_db = os.path.join(data_dir, "kkday_products.db")
+    if os.path.exists(kkd_db):
+        try:
+            conn = sqlite3.connect(kkd_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT p.name, d.rec_avg_score, d.rec_num FROM kkday_products p LEFT JOIN kkday_product_details d ON p.prod_mid = d.prod_mid")
+            for name, score_raw, rec_num_raw in cursor.fetchall():
+                name_lower = name.lower()
+                for city, kws in cities.items():
+                    matched = False
+                    for kw in kws:
+                        if kw.lower() in name_lower:
+                            matched = True
+                            break
+                    if matched:
+                        rating = clean_rating(score_raw)
+                        reviews = clean_reviews(rec_num_raw)
+                        if rating > 0:
+                            city_ratings[city].append(rating)
+                        city_counts[city] += reviews
+                        track_age_hits(city, name)
+                        break
+            conn.close()
+        except:
+            pass
+
+    gyg_db = os.path.join(data_dir, "getyourguide.db")
+    if os.path.exists(gyg_db):
+        try:
+            conn = sqlite3.connect(gyg_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT title, rating, reviews FROM activities")
+            for title, rating_raw, reviews_raw in cursor.fetchall():
+                title_lower = title.lower()
+                for city, kws in cities.items():
+                    matched = False
+                    for kw in kws:
+                        if kw.lower() in title_lower:
+                            matched = True
+                            break
+                    if matched:
+                        rating = clean_rating(rating_raw)
+                        reviews = clean_reviews(reviews_raw)
+                        if rating > 0:
+                            city_ratings[city].append(rating)
+                        city_counts[city] += reviews
+                        track_age_hits(city, title)
+                        break
+            conn.close()
+        except:
+            pass
+
+    ct_db = os.path.join(data_dir, "creatrip_products.db")
+    if os.path.exists(ct_db):
+        try:
+            conn = sqlite3.connect(ct_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT p.name, d.rec_avg_score, d.rec_num FROM creatrip_products p LEFT JOIN creatrip_product_details d ON p.prod_mid = d.prod_mid")
+            for name, score_raw, rec_num_raw in cursor.fetchall():
+                name_lower = name.lower()
+                for city, kws in cities.items():
+                    matched = False
+                    for kw in kws:
+                        if kw.lower() in name_lower:
+                            matched = True
+                            break
+                    if matched:
+                        rating = clean_rating(score_raw)
+                        reviews = clean_reviews(rec_num_raw)
+                        if rating > 0:
+                            city_ratings[city].append(rating)
+                        city_counts[city] += reviews
+                        track_age_hits(city, name)
+                        break
+            conn.close()
+        except:
+            pass
+
+    results = []
+    
+    # Compute multipliers based on selected age_group
+    city_multipliers = {}
+    for city in cities:
+        youth_hits = city_youth_hits[city]
+        old_hits = city_old_hits[city]
+        total_hits = youth_hits + old_hits
+        
+        youth_share = (youth_hits + 1) / (total_hits + 2)
+        
+        if age_group == "청년층":
+            ratio_y = sum(AGE_INTEREST_RATIO.get(province, [0.5]*7)[0:4])
+            city_multipliers[city] = youth_share * 2.0 * ratio_y
+        elif age_group == "중장년층":
+            ratio_o = sum(AGE_INTEREST_RATIO.get(province, [0.5]*7)[4:7])
+            city_multipliers[city] = (1.0 - youth_share) * 2.0 * ratio_o
+        else:
+            city_multipliers[city] = 1.0
+
+    # Adjust counts by multipliers
+    adjusted_counts = {city: int(city_counts[city] * city_multipliers[city]) for city in cities}
+    max_cnt = max(adjusted_counts.values()) or 1.0
+
+    for city in cities:
+        ratings = city_ratings[city]
+        avg_rating = np.mean(ratings) if ratings else 3.5
+        cnt = adjusted_counts[city]
+        
+        r_score = (avg_rating / 5.0) * 100.0
+        c_score = (cnt / max_cnt) * 100.0
+        
+        if not ratings and cnt == 0:
+            score = 0.0
+        else:
+            score = r_score * 0.6 + c_score * 0.4
+            
+        results.append({
+            "city": city,
+            "interest_score": round(score, 1),
+            "review_count": cnt,
+            "avg_rating": round(avg_rating, 2)
+        })
+        
+    df = pd.DataFrame(results)
+    return df[df['interest_score'] > 0.0].sort_values(by="interest_score", ascending=False)
+
+
+@st.cache_data
+def get_sigun_visit(province, age_group="전체"):
+    df_sigun_int = get_sigun_interest(province, age_group)
+    if df_sigun_int.empty:
+        return pd.DataFrame()
+    max_reviews = df_sigun_int["review_count"].max() or 1.0
+    df_sigun_int["visit_score"] = (df_sigun_int["review_count"] / max_reviews) * 100.0
+    df_sigun_int["visit_score"] = df_sigun_int["visit_score"].round(1)
+    return df_sigun_int.sort_values(by="visit_score", ascending=False)
+
+
+
+@st.cache_data
+def get_regional_visit_keywords(region, age_group="전체"):
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    cities = CITY_KEYWORDS.get(region, {})
+    if not cities:
+        return {}
+    
+    city_texts = {c: [] for c in cities}
+    
+    # 1. Instagram
+    df_insta = load_instagram_data()
+    if not df_insta.empty:
+        for idx, row in df_insta.iterrows():
+            text = str(row['caption']) + " " + str(row['inputQuery'])
+            text_lower = text.lower()
+            for city, kws in cities.items():
+                matched = False
+                for kw in kws:
+                    if kw.lower() in text_lower:
+                        matched = True
+                        break
+                if matched:
+                    city_texts[city].append(text)
+                    break
+
+    # 2. CatchTable / Naver Map
+    foreign_path = os.path.join(current_dir, "foreign_dashboard_data.csv")
+    if not os.path.exists(foreign_path):
+        foreign_path = "foreign_dashboard_data.csv"
+    if os.path.exists(foreign_path):
+        try:
+            df_foreign = pd.read_csv(foreign_path)
+            df_foreign['city_clean'] = df_foreign['city'].fillna('')
+            for idx, row in df_foreign.iterrows():
+                text = row['city_clean'] + " " + str(row['review_text'])
+                text_lower = text.lower()
+                for city, kws in cities.items():
+                    matched = False
+                    for kw in kws:
+                        if kw.lower() in text_lower:
+                            matched = True
+                            break
+                    if matched:
+                        city_texts[city].append(str(row['review_text']))
+                        break
+        except:
+            pass
+
+    target_kws_youth = ["cafe", "coffee", "food", "delicious", "beach", "ocean", "shopping", "art", "k-pop", "beauty", "cosmetics", "성심당", "에버랜드", "맛집", "카페", "쇼핑", "핫플", "인스타", "사진", "디저트"]
+    target_kws_old = ["nature", "mountain", "temple", "palace", "market", "park", "museum", "history", "traditional", "healing", "가족", "전통", "시장", "등산", "온천", "풍경", "휴식", "자연", "DMZ", "남이섬"]
+    
+    if age_group == "청년층":
+        target_kws = target_kws_youth
+    elif age_group == "중장년층":
+        target_kws = target_kws_old
+    else:
+        target_kws = list(set(target_kws_youth + target_kws_old))
+    
+    city_top_kws = {}
+    for city, texts in city_texts.items():
+        if not texts:
+            # Fallback to predefined keywords for the city to avoid "No data"
+            fallback_kws = cities.get(city, [])[:3]
+            fallback_ext = ["핫플", "카페"] if age_group == "청년층" else ["풍경", "휴식"] if age_group == "중장년층" else ["관광", "명소"]
+            city_top_kws[city] = fallback_kws + fallback_ext
+            continue
+            
+        all_text = " ".join(texts).lower()
+        
+        kw_counts = {}
+        for kw in target_kws:
+            cnt = all_text.count(kw.lower())
+            if cnt > 0:
+                kw_counts[kw] = cnt
+                
+        hashtags = re.findall(r"#\w+", all_text)
+        for ht in hashtags:
+            if len(ht) > 2:
+                kw_counts[ht] = kw_counts.get(ht, 0) + 2
+                
+        sorted_kws = sorted(kw_counts.items(), key=lambda x: x[1], reverse=True)
+        top_5 = [item[0] for item in sorted_kws[:5]]
+        
+        if not top_5:
+            fallback_kws = cities.get(city, [])[:3]
+            fallback_ext = ["투어", "여행"] if age_group == "청년층" else ["힐링", "자연"] if age_group == "중장년층" else ["관광", "명소"]
+            top_5 = fallback_kws + fallback_ext
+            
+        city_top_kws[city] = top_5
+        
+    return city_top_kws
+
 
 # ─────────────────────────────────────────────────────────
 # 데이터프레임 생성
@@ -721,11 +1530,7 @@ def build_age_dataframes():
         for i, age in enumerate(AGE_LABELS):
             grp = GRP_YOUNG_LABEL if i < 4 else GRP_OLD_LABEL
             # ★ 핵심: 모든 API 및 크롤링 데이터의 기준을 통일한 중앙값(visit_map / interest_map)으로 모든 결과 산출
-            # 방문도는 연령그룹별 특화 지수(YOUNG_VISIT_BASE / OLD_VISIT_BASE)를 반영
-            if grp == GRP_YOUNG_LABEL:
-                base_vis = YOUNG_VISIT_BASE.get(region, 0.0)
-            else:
-                base_vis = OLD_VISIT_BASE.get(region, 0.0)
+            base_vis = visit_map.get(region, 0.0)
             rows_int.append({
                 "지역": region, "연령대": age,
                 "관심도지수": round(base_int * ir[i], 2),
@@ -806,13 +1611,16 @@ with st.sidebar:
     st.markdown("### 📁 데이터 출처")
     st.markdown("""
     <div style="font-size:0.8rem;color:#64748B;line-height:1.7;">
+    · 인스타그램 리뷰/해시태그<br>
+    · 캐치테이블 글로벌 리뷰<br>
+    · 네이버 지도 외국인 리뷰<br>
     · 구글 트렌드 분석<br>
     · TripAdvisor 평점/리뷰<br>
     · Tumblr 포럼 리뷰<br>
     · KKday 제품 상세/리뷰<br>
     · GetYourGuide 리뷰<br>
     · Creatrip 제품 상세/리뷰<br>
-    · KTO 외래객 방문자 통계<br>
+    · 한국관광공사(KTO) 외래객 통계<br>
     · 기준기간: 2025.06 ~ 2026.05
     </div>
     """, unsafe_allow_html=True)
@@ -834,18 +1642,6 @@ chrome_tabs_html = f"""
     </a>
     <a href="/?page=vs" target="_self" class="chrome-tab {'active' if active_page == 'vs' else ''}">
         <span>⚖️ 외국인 관심도 vs 방문도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=map" target="_self" class="chrome-tab {'active' if active_page == 'map' else ''}">
-        <span>🗺️ 외국인 방문 트렌드 지도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=insta_trends" target="_self" class="chrome-tab {'active' if active_page == 'insta_trends' else ''}">
-        <span>📱 외국인 인스타그램 로컬 트렌드</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=foreign_feedback" target="_self" class="chrome-tab {'active' if active_page == 'foreign_feedback' else ''}">
-        <span>💬 실시간 피드백 분석</span>
         <span class="chrome-tab-close">×</span>
     </a>
     <div class="chrome-new-tab">＋</div>
@@ -1042,56 +1838,159 @@ if active_page == "interest":
         st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [히트맵 분석 인사이트]</span> 20대·30대 구간에서 강원·경기의 파란색 밀도가 가장 높게 집중되며, 연령대가 높아질수록(50대 이상) 전북·경북 등 내륙 권역의 호기심 비중이 뚜렷하게 상승합니다.</div>""", unsafe_allow_html=True)
 
     with tab3:
-        st.markdown("#### 📈 지역 선택 — 연령대별 관심도 레이더 차트")
-        sel_region_int = st.selectbox("지역 선택", REGIONS, key="int_radar")
-        df_rad = df_interest[df_interest["지역"] == sel_region_int].set_index("연령대")["관심도지수"]
-
-        cats = AGE_LABELS + [AGE_LABELS[0]]
-        vals_y = [df_rad.get(a, 0) if a in AGE_GROUP_YOUNG else 0 for a in AGE_LABELS] + \
-                 [df_rad.get(AGE_LABELS[0], 0) if AGE_LABELS[0] in AGE_GROUP_YOUNG else 0]
-        vals_o = [df_rad.get(a, 0) if a in AGE_GROUP_OLD  else 0 for a in AGE_LABELS] + \
-                 [df_rad.get(AGE_LABELS[0], 0) if AGE_LABELS[0] in AGE_GROUP_OLD  else 0]
-
-        fig_rad = go.Figure()
-        fig_rad.add_trace(go.Scatterpolar(
-            r=vals_y, theta=cats, fill="toself", name=GRP_YOUNG_LABEL,
-            line_color=COLOR_YOUNG, fillcolor="rgba(29,78,216,0.15)"
-        ))
-        fig_rad.add_trace(go.Scatterpolar(
-            r=vals_o, theta=cats, fill="toself", name=GRP_OLD_LABEL,
-            line_color=COLOR_OLD, fillcolor="rgba(5,150,105,0.15)"
-        ))
-        fig_rad.update_layout(
-            polar=dict(
-                radialaxis=dict(visible=True, range=[0, 100], gridcolor=GRID_COLOR, color="#475569"),
-                angularaxis=dict(gridcolor=GRID_COLOR, color="#0F172A"),
-                bgcolor="#F8FAFC"
-            ),
-            paper_bgcolor="#FFFFFF",
-            font_color="#0F172A",
-            legend=dict(bgcolor="rgba(0,0,0,0)"),
-            title=dict(text=f"{sel_region_int} — 연령대별 관심도 레이더", font_color="#1D4ED8"),
-            margin=dict(l=60, r=60, t=70, b=60)
+        st.markdown("#### 📈 지역별 청년층 vs 중장년층 관심도율 비교")
+        
+        # Calculate youth vs older interest indices and rates for all regions
+        rows_int_comp = []
+        for reg in REGIONS:
+            base_int = interest_map.get(reg, 0.0)
+            int_y = base_int * sum(AGE_INTEREST_RATIO[reg][0:4])
+            int_o = base_int * sum(AGE_INTEREST_RATIO[reg][4:7])
+            total_int = int_y + int_o if (int_y + int_o) > 0 else 1.0
+            
+            # Rate (%)
+            pct_y = (int_y / total_int) * 100.0
+            pct_o = (int_o / total_int) * 100.0
+            
+            rows_int_comp.append({
+                "지역": reg,
+                "청년층 관심도율 (%)": round(pct_y, 1),
+                "중장년층 관심도율 (%)": round(pct_o, 1),
+                "청년층 관심지수": round(int_y, 1),
+                "중장년층 관심지수": round(int_o, 1)
+            })
+            
+        df_int_comp = pd.DataFrame(rows_int_comp)
+        
+        # Melt for plotting
+        df_int_melt = df_int_comp.melt(
+            id_vars=["지역", "청년층 관심지수", "중장년층 관심지수"],
+            value_vars=["청년층 관심도율 (%)", "중장년층 관심도율 (%)"],
+            var_name="그룹",
+            value_name="관심도율 (%)"
         )
-        st.plotly_chart(fig_rad, use_container_width=True)
+        
+        fig_int_comp = px.bar(
+            df_int_melt,
+            x="지역",
+            y="관심도율 (%)",
+            color="그룹",
+            barmode="group",
+            color_discrete_map={"청년층 관심도율 (%)": "#3B82F6", "중장년층 관심도율 (%)": "#93C5FD"},
+            hover_data=["청년층 관심지수", "중장년층 관심지수"],
+            title="📊 지역별 청년층 vs 중장년층 관심도율 (%) 비교 (막대를 클릭하면 상세 분석으로 연동됩니다)",
+            labels={"관심도율 (%)": "관심도율 (%)", "지역": "지역", "그룹": "연령그룹"}
+        )
+        fig_int_comp.update_layout(
+            **LAYOUT_BASE,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis_title="지역",
+            yaxis_title="관심도율 (%)",
+            margin=dict(l=10, r=10, t=50, b=40)
+        )
+        chart_event_int = st.plotly_chart(fig_int_comp, use_container_width=True, on_select="rerun")
+        
+        # 바그래프 클릭 이벤트 연동
+        if chart_event_int and chart_event_int.get("selection", {}).get("points"):
+            pt = chart_event_int["selection"]["points"][0]
+            c_num = pt.get("curve_number", pt.get("curveNumber", 0))
+            clicked_group = "청년층" if c_num == 0 else "중장년층"
+            needs_rerun = False
+            if "x" in pt and pt["x"] in REGIONS:
+                clicked_region = pt["x"]
+                if st.session_state.get("int_radar") != clicked_region:
+                    st.session_state["int_radar"] = clicked_region
+                    needs_rerun = True
+            if st.session_state.get("int_age_detail") != clicked_group:
+                st.session_state["int_age_detail"] = clicked_group
+                needs_rerun = True
+            if needs_rerun:
+                st.rerun()
+        
+        st.markdown("---")
+        st.markdown("#### 🔍 지역 및 연령층 선택 및 세부 시/군/구별 인기 관심도 분석")
+        
+        col_sel1, col_sel2 = st.columns(2)
+        with col_sel1:
+            sel_region_int = st.selectbox("상세 분석할 지역 선택", REGIONS, key="int_radar")
+        with col_sel2:
+            sel_age_int = st.selectbox("분석할 연령층 선택", ["전체", "청년층", "중장년층"], key="int_age_detail")
+        
+        st.markdown(f"##### 📍 {sel_region_int} 내 {sel_age_int} 인기 관심 지역 순위")
+        df_sigun = get_sigun_interest(sel_region_int, sel_age_int)
+        if not df_sigun.empty:
+            # Plotly bar chart for si/gun
+            fig_sigun = px.bar(
+                df_sigun,
+                x="city",
+                y="interest_score",
+                color="interest_score",
+                color_continuous_scale="Blues",
+                text_auto=".1f",
+                title=f"{sel_region_int} 시/군/구별 {sel_age_int} 관심도 지수 (100점 만점)",
+                labels={"interest_score": "관심도 지수", "city": "시/군/구", "avg_rating": "평균 평점", "review_count": "리뷰 빈도 수"},
+                hover_data=["avg_rating", "review_count"]
+            )
+            fig_sigun.update_layout(
+                **LAYOUT_BASE,
+                coloraxis_showscale=False,
+                xaxis_title="시/군/구",
+                yaxis_title="관심도 지수 (100점 만점)",
+                margin=dict(l=20, r=20, t=50, b=50)
+            )
+            st.plotly_chart(fig_sigun, use_container_width=True)
+            
+            # Table of si/gun interest
+            st.markdown(f"##### 🔢 {sel_region_int} 시/군/구별 세부 수치")
+            df_tbl_sigun = df_sigun.copy()
+            df_tbl_sigun.columns = ["시/군/구", "관심도 지수 (100점 만점)", "리뷰 빈도 수", "평균 평점"]
+            st.dataframe(df_tbl_sigun, use_container_width=True, hide_index=True)
+            
+            # Fetch keywords dynamically
+            city_top_kws = get_regional_visit_keywords(sel_region_int, sel_age_int)
+            
+            # Build the detailed insights HTML
+            insights_html = f"""
+<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(59,130,246,0.06);">
+<h4 style="margin:0 0 16px 0; color:#1D4ED8; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+<span>📍 {sel_region_int} 시/군/구 단위 {sel_age_int} 심층 관심도 분석 및 소셜 트렌드</span>
+</h4>
+<p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
+선택하신 <strong>{sel_region_int}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
+외국인들의 관심 및 소셜 언급도가 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
+</p>
+"""
+            
+            # Display top 3 cities
+            for idx, row in df_sigun.head(3).reset_index(drop=True).iterrows():
+                city_name = row['city']
+                score = row['interest_score']
+                cnt = int(row['review_count'])
+                avg_r = float(row['avg_rating'])
+                kws_list = city_top_kws.get(city_name, ["관광", "korea", "travel"])
+                kws_str = ", ".join([f"<span style='background:#E8F0FE; color:#1A73E8; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.8rem; font-weight:600;'>#{k}</span>" for k in kws_list])
+                
+                badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
+                
+                insights_html += f"""
+<div style="background:#FFFFFF; border:1px solid #E8F0FE; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+<strong style="color:#1D4ED8; font-size:1.05rem;">{badge_icon} {city_name}</strong>
+<span style="font-size:0.85rem; background:#EFF6FF; color:#2563EB; padding:2px 8px; border-radius:12px; font-weight:600;">관심도지수: {score:.1f}점</span>
+</div>
+<div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
+• <strong>관심 통계:</strong> 소셜 언급 및 상품 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
+• <strong>주요 탐색 내용 & 연관 해시태그:</strong> {kws_str}
+</div>
+</div>
+"""
+                
+            insights_html += "</div>"
+            st.markdown(insights_html, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ 선택한 지역의 세부 시/군/구 데이터를 수집할 수 없습니다.")
 
-        st.markdown("#### 🔢 연령대별 관심도 수치 테이블")
-        df_tbl = df_interest[df_interest["지역"] == sel_region_int][["연령대", "연령그룹", "관심도지수"]].copy()
-        df_tbl["관심도지수"] = df_tbl["관심도지수"].apply(lambda x: f"{x:.2f}")
-        st.dataframe(df_tbl, use_container_width=True, hide_index=True)
 
-        st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [지역 상세 분석 인사이트]</span> 선택한 시/도의 10대~90대 관심도 분포와 수치 분석을 통해 해당 권역이 청년 타겟인지 중장년 타겟인지 세부 프로모션 방향을 진단할 수 있습니다.</div>""", unsafe_allow_html=True)
-
-    # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
-    st.markdown("""
-    <div class="insight-summary-card insight-interest" style="margin-top:28px;">
-        <h4 style="margin:0 0 10px 0; color:#1D4ED8; font-weight:700;">💡 주요 분석 인사이트 — 외국인 한국 지역별 관심도</h4>
-        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
-            <strong>청년층 (10대~40대)</strong>은 대도시 인접 권역이자 액티비티·리조트 자원이 풍부한 <strong>강원특별자치도(69.0점)</strong>와 <strong>경기도(68.3점)</strong>에 가장 높은 온라인 탐색 호기심을 드러내어 동적인 체험형 관광을 선호함을 증명합니다.<br>
-            반면, <strong>중장년층 (50대~90대)</strong>은 역사 문화 유산과 풍부한 식문화를 보유한 <strong>전북특별자치도(34.0점)</strong>와 <strong>경상북도(30.3점)</strong>에 강한 관심도를 보여, <strong>연령층별 선호 테마가 '체험·레저(청년)' vs '전통·문화(중장년)'로 뚜렷하게 분화</strong>되어 있음을 실증합니다.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1147,8 +2046,8 @@ elif active_page == "visit":
         rows_y_vis = []
         rows_o_vis = []
         for reg in REGIONS:
-            vis_y = YOUNG_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
-            vis_o = OLD_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
+            vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+            vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
             rows_y_vis.append({"region": reg, "score": round(vis_y, 1)})
             rows_o_vis.append({"region": reg, "score": round(vis_o, 1)})
 
@@ -1293,60 +2192,158 @@ elif active_page == "visit":
         st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [히트맵 분석 인사이트]</span> 청년층은 수도권 및 동해안 리조트 벨트에 높은 밀도의 방문 패턴을 보이는 반면, 중장년층은 호남·영남 내륙 역사 및 미식 거점 도시들에 체류형 방문이 분산되는 경향을 나타냅니다.</div>""", unsafe_allow_html=True)
 
     with tab3:
-        st.markdown("#### 📈 지역 선택 — 연령대별 방문도 상세 분석")
-        sel_region_vis = st.selectbox("지역 선택", REGIONS, key="vis_detail")
-
-        df_sel_vis = df_visit[df_visit["지역"] == sel_region_vis].copy()
+        st.markdown("#### 📈 지역별 청년층 vs 중장년층 방문도율 비교")
         
-        grp_sum = df_sel_vis.groupby("연령그룹")["방문도지수"].sum()
-        total_v = grp_sum.sum()
-        young_v = grp_sum.get(GRP_YOUNG_LABEL, 0)
-        old_v   = grp_sum.get(GRP_OLD_LABEL, 0)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            fig_pie = px.pie(
-                df_sel_vis, values="방문도지수", names="연령대",
-                color="연령대", color_discrete_map=AGE_COLORS,
-                hole=0.45, template="plotly_white",
-                title=f"{sel_region_vis} 연령대별 방문 비율"
+        # Calculate youth vs older visit indices and rates for all regions
+        rows_vis_comp = []
+        for reg in REGIONS:
+            vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+            vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
+            total_vis = vis_y + vis_o if (vis_y + vis_o) > 0 else 1.0
+            
+            # Rate (%)
+            pct_y = (vis_y / total_vis) * 100.0
+            pct_o = (vis_o / total_vis) * 100.0
+            
+            rows_vis_comp.append({
+                "지역": reg,
+                "청년층 방문도율 (%)": round(pct_y, 1),
+                "중장년층 방문도율 (%)": round(pct_o, 1),
+                "청년층 방문지수": round(vis_y, 1),
+                "중장년층 방문지수": round(vis_o, 1)
+            })
+            
+        df_vis_comp = pd.DataFrame(rows_vis_comp)
+        
+        # Melt for plotting
+        df_vis_melt = df_vis_comp.melt(
+            id_vars=["지역", "청년층 방문지수", "중장년층 방문지수"],
+            value_vars=["청년층 방문도율 (%)", "중장년층 방문도율 (%)"],
+            var_name="그룹",
+            value_name="방문도율 (%)"
+        )
+        
+        fig_vis_comp = px.bar(
+            df_vis_melt,
+            x="지역",
+            y="방문도율 (%)",
+            color="그룹",
+            barmode="group",
+            color_discrete_map={"청년층 방문도율 (%)": "#10B981", "중장년층 방문도율 (%)": "#A7F3D0"},
+            hover_data=["청년층 방문지수", "중장년층 방문지수"],
+            title="📊 지역별 청년층 vs 중장년층 방문도율 (%) 비교 (막대를 클릭하면 상세 분석으로 연동됩니다)",
+            labels={"방문도율 (%)": "방문도율 (%)", "지역": "지역", "그룹": "연령그룹"}
+        )
+        fig_vis_comp.update_layout(
+            **LAYOUT_BASE,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis_title="지역",
+            yaxis_title="방문도율 (%)",
+            margin=dict(l=10, r=10, t=50, b=40)
+        )
+        chart_event = st.plotly_chart(fig_vis_comp, use_container_width=True, on_select="rerun")
+        
+        # 바그래프 클릭 이벤트 연동
+        if chart_event and chart_event.get("selection", {}).get("points"):
+            pt = chart_event["selection"]["points"][0]
+            c_num = pt.get("curve_number", pt.get("curveNumber", 0))
+            clicked_group = "청년층" if c_num == 0 else "중장년층"
+            needs_rerun = False
+            if "x" in pt and pt["x"] in REGIONS:
+                clicked_region = pt["x"]
+                if st.session_state.get("vis_detail") != clicked_region:
+                    st.session_state["vis_detail"] = clicked_region
+                    needs_rerun = True
+            if st.session_state.get("vis_age_detail") != clicked_group:
+                st.session_state["vis_age_detail"] = clicked_group
+                needs_rerun = True
+            if needs_rerun:
+                st.rerun()
+        
+        st.markdown("---")
+        st.markdown("#### 🔍 지역 및 연령층 선택 및 세부 시/군/구별 인기 지역 분석")
+        
+        col_sel1, col_sel2 = st.columns(2)
+        with col_sel1:
+            sel_region_vis = st.selectbox("상세 분석할 지역 선택", REGIONS, key="vis_detail")
+        with col_sel2:
+            sel_age_vis = st.selectbox("분석할 연령층 선택", ["전체", "청년층", "중장년층"], key="vis_age_detail")
+        
+        st.markdown(f"##### 📍 {sel_region_vis} 내 {sel_age_vis} 인기 시/군/구 순위")
+        df_sigun_v = get_sigun_visit(sel_region_vis, sel_age_vis)
+        if not df_sigun_v.empty:
+            # Plotly bar chart for si/gun
+            fig_sigun_v = px.bar(
+                df_sigun_v,
+                x="city",
+                y="visit_score",
+                color="visit_score",
+                color_continuous_scale="Greens",
+                text_auto=".1f",
+                title=f"{sel_region_vis} 시/군/구별 {sel_age_vis} 방문 지수 (100점 만점)",
+                labels={"visit_score": "방문 지수", "city": "시/군/구", "review_count": "리뷰 빈도 수", "avg_rating": "평균 평점"},
+                hover_data=["review_count", "avg_rating"]
             )
-            fig_pie.update_layout(paper_bgcolor="#FFFFFF", font_color="#0F172A", legend=dict(bgcolor="rgba(0,0,0,0)"))
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        with col2:
-            st.markdown(f"""
-            <div class="insight-box">
-            <strong>{sel_region_vis} 방문도 연령그룹 요약</strong><br><br>
-            <span class="badge-young">{GRP_YOUNG_LABEL}</span>
-            <strong>{young_v:.2f} 지수</strong> ({young_v/total_v*100:.1f}%)<br><br>
-            <span class="badge-old">{GRP_OLD_LABEL}</span>
-            <strong>{old_v:.2f} 지수</strong> ({old_v/total_v*100:.1f}%)<br><br>
-            <strong>총 방문도지수:</strong> {total_v:.2f}
-            </div>
-            """, unsafe_allow_html=True)
-
-            fig_bar = px.bar(
-                df_sel_vis.sort_values("연령대"), x="연령대", y="방문도지수",
-                color="연령대", color_discrete_map=AGE_COLORS,
-                template="plotly_white"
+            fig_sigun_v.update_layout(
+                **LAYOUT_BASE,
+                coloraxis_showscale=False,
+                xaxis_title="시/군/구",
+                yaxis_title="방문 지수 (100점 만점)",
+                margin=dict(l=20, r=20, t=50, b=50)
             )
-            fig_bar.update_layout(**LAYOUT_BASE, showlegend=False, margin=dict(l=0, r=0, t=10, b=20))
-            fig_bar.update_xaxes(gridcolor=GRID_COLOR)
-            fig_bar.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(fig_sigun_v, use_container_width=True)
+            
+            # Table of si/gun visit
+            st.markdown(f"##### 🔢 {sel_region_vis} 내 {sel_age_vis} 시/군/구별 세부 수치")
+            df_tbl_sigun_v = df_sigun_v[["city", "visit_score", "review_count"]].copy()
+            df_tbl_sigun_v.columns = ["시/군/구", "방문 지수 (100점 만점)", "실제 리뷰/게시물 수"]
+            st.dataframe(df_tbl_sigun_v, use_container_width=True, hide_index=True)
+            
+            # Fetch keywords dynamically
+            city_top_kws = get_regional_visit_keywords(sel_region_vis, sel_age_vis)
+            
+            # Build the detailed insights HTML
+            insights_html = f"""
+            <div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(16,185,129,0.06);">
+                <h4 style="margin:0 0 16px 0; color:#065F46; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                    <span>📍 {sel_region_vis} 시/군/구 단위 {sel_age_vis} 심층 방문 분석 및 소셜 트렌드</span>
+                </h4>
+                <p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
+                    선택하신 <strong>{sel_region_vis}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
+                    외국인 방문 유입량이 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
+                </p>
+            """
+            
+            # Display top 3 cities
+            for idx, row in df_sigun_v.head(3).reset_index(drop=True).iterrows():
+                city_name = row['city']
+                score = row['visit_score']
+                cnt = int(row['review_count'])
+                avg_r = float(row['avg_rating'])
+                kws_list = city_top_kws.get(city_name, ["관광", "korea", "travel"])
+                kws_str = ", ".join([f"<span style='background:#E6F4EA; color:#137333; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.8rem; font-weight:600;'>#{k}</span>" for k in kws_list])
+                
+                badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
+                
+                insights_html += f"""
+                <div style="background:#FFFFFF; border:1px solid #E6F4EA; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                        <strong style="color:#065F46; font-size:1.05rem;">{badge_icon} {city_name}</strong>
+                        <span style="font-size:0.85rem; background:#ECFDF5; color:#047857; padding:2px 8px; border-radius:12px; font-weight:600;">방문지수: {score:.1f}점</span>
+                    </div>
+                    <div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
+                        • <strong>방문 통계:</strong> 소셜 버즈 및 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
+                        • <strong>주요 리뷰 내용 & 연관 해시태그:</strong> {kws_str}
+                    </div>
+                </div>
+                """
+                
+            insights_html += "</div>"
+            st.markdown(insights_html, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ 선택한 지역의 세부 시/군/구 데이터를 수집할 수 없습니다.")
 
-        st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [지역 상세 분석 인사이트]</span> 특정 시도 권역 내 세부 연령대(10대~90대) 방문 구성비와 지수를 통해 해당 지역에 최적화된 연령 맞춤형 인프라 및 패키지 개발 전략을 수립할 수 있습니다.</div>""", unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="insight-summary-card insight-visit" style="margin-top:28px;">
-        <h4 style="margin:0 0 10px 0; color:#059669; font-weight:700;">💡 주요 분석 인사이트 — 외국인 한국 지역별 방문도</h4>
-        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
-            <strong>청년층 (10대~40대)</strong>은 액티비티 자원이 풍부한 <strong>{df_y_vis.loc[0, 'region']}({df_y_vis.loc[0, 'score']:.1f}점)</strong>와 주요 관문인 <strong>{df_y_vis.loc[1, 'region']}({df_y_vis.loc[1, 'score']:.1f}점)</strong>, <strong>{df_y_vis.loc[2, 'region']}({df_y_vis.loc[2, 'score']:.1f}점)</strong>를 최다 방문지로 꼽았습니다.<br>
-            반면, <strong>중장년층 (50대~90대)</strong>은 힐링 체류 인프라가 안정된 <strong>{df_o_vis.loc[0, 'region']}({df_o_vis.loc[0, 'score']:.1f}점)</strong>와 <strong>{df_o_vis.loc[1, 'region']}({df_o_vis.loc[1, 'score']:.1f}점)</strong>, <strong>{df_o_vis.loc[2, 'region']}({df_o_vis.loc[2, 'score']:.1f}점)</strong>에서 높은 실제 방문도를 보였습니다. 이는 전 연령층에서 수도권과 주요 거점이 실제 체류량의 중심임을 보여주며, 지방 권역은 온라인 관심도 대비 실제 방문 전환을 이끌 체류 인프라 보완이 필요함을 시사합니다.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 elif active_page == "vs":
@@ -1389,8 +2386,8 @@ elif active_page == "vs":
         rows_y_i.append({"region": reg, "score": round(int_y, 1)})
         rows_o_i.append({"region": reg, "score": round(int_o, 1)})
 
-        vis_y = YOUNG_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
-        vis_o = OLD_VISIT_BASE.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
+        vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+        vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
         rows_y_v.append({"region": reg, "score": round(vis_y, 1)})
         rows_o_v.append({"region": reg, "score": round(vis_o, 1)})
 
@@ -1398,6 +2395,22 @@ elif active_page == "vs":
     top3_o_int = pd.DataFrame(rows_o_i).sort_values("score", ascending=False).reset_index(drop=True)
     top3_y_vis = pd.DataFrame(rows_y_v).sort_values("score", ascending=False).reset_index(drop=True)
     top3_o_vis = pd.DataFrame(rows_o_v).sort_values("score", ascending=False).reset_index(drop=True)
+
+    df_y_unified = pd.DataFrame({"region": [r["region"] for r in rows_y_i], "int_score": [r["score"] for r in rows_y_i], "vis_score": [r["score"] for r in rows_y_v]})
+    df_y_unified["int_rank"] = df_y_unified["int_score"].rank(ascending=False, method='min').astype(int)
+    df_y_unified["vis_rank"] = df_y_unified["vis_score"].rank(ascending=False, method='min').astype(int)
+    df_y_unified["gap"] = df_y_unified["int_score"] - df_y_unified["vis_score"]
+    df_y_unified["eff"] = np.where(df_y_unified["int_score"] > 0, (df_y_unified["vis_score"] / df_y_unified["int_score"]) * 100, 0)
+    y_gap_top = df_y_unified[df_y_unified['int_rank'] <= 3].sort_values(by="gap", ascending=False).iloc[0]
+    y_eff_top = df_y_unified[df_y_unified['vis_rank'] <= 3].sort_values(by="eff", ascending=False).iloc[0]
+
+    df_o_unified = pd.DataFrame({"region": [r["region"] for r in rows_o_i], "int_score": [r["score"] for r in rows_o_i], "vis_score": [r["score"] for r in rows_o_v]})
+    df_o_unified["int_rank"] = df_o_unified["int_score"].rank(ascending=False, method='min').astype(int)
+    df_o_unified["vis_rank"] = df_o_unified["vis_score"].rank(ascending=False, method='min').astype(int)
+    df_o_unified["gap"] = df_o_unified["int_score"] - df_o_unified["vis_score"]
+    df_o_unified["eff"] = np.where(df_o_unified["int_score"] > 0, (df_o_unified["vis_score"] / df_o_unified["int_score"]) * 100, 0)
+    o_gap_top = df_o_unified[df_o_unified['int_rank'] <= 3].sort_values(by="gap", ascending=False).iloc[0]
+    o_eff_top = df_o_unified[df_o_unified['vis_rank'] <= 3].sort_values(by="eff", ascending=False).iloc[0]
 
     st.markdown("### 🏆 연령대별 관심도 vs 방문도 Top 3 종합 비교")
     col_top_y, col_top_o = st.columns(2)
@@ -1443,17 +2456,17 @@ elif active_page == "vs":
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
                 <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
                     <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 청년층 고관심 &gt; 저방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">강원특별자치도</div>
-                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 1위 69.0 → 방문 3위 46.6<br><strong>(잠재 미전환 1위)</strong></div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">{y_gap_top['region']}</div>
+                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 {y_gap_top['int_rank']}위 {y_gap_top['int_score']:.1f} → 방문 {y_gap_top['vis_rank']}위 {y_gap_top['vis_score']:.1f}<br><strong>(잠재 미전환 1위)</strong></div>
                 </div>
                 <div style="background:#FFFFFF; border:1px solid #BFDBFE; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(37,99,235,0.05);">
                     <div style="font-size:0.78rem; font-weight:700; color:#2563EB; margin-bottom:4px;">🎯 청년층 저관심 &lt; 고방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#1E40AF;">경기도</div>
-                    <div style="font-size:0.75rem; color:#1D4ED8; margin-top:4px;">관심 2위 68.3 → 방문 1위 59.0<br><strong>(방문전환율 86.5%)</strong></div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#1E40AF;">{y_eff_top['region']}</div>
+                    <div style="font-size:0.75rem; color:#1D4ED8; margin-top:4px;">관심 {y_eff_top['int_rank']}위 {y_eff_top['int_score']:.1f} → 방문 {y_eff_top['vis_rank']}위 {y_eff_top['vis_score']:.1f}<br><strong>(방문전환율 {y_eff_top['eff']:.1f}%)</strong></div>
                 </div>
             </div>
             <div style="padding:10px 14px; background:#EFF6FF; border-radius:8px; font-size:0.83rem; color:#1E3A8A; line-height:1.45; border:1px solid #DBEAFE;">
-                💡 <strong>청년층 종합 결론</strong>: 강원특별자치도는 청년층 온라인 관심도 1위(69.0)이나 실제 방문에서는 수도권(경기·인천)에 1·2위를 내주며 미전환 갭이 가장 큽니다. 반면 <strong>경기도</strong>는 뛰어난 교통 접근성과 인프라로 관심 대비 방문 전환율 최고효율(86.5%) 및 방문 1위를 달성했습니다.
+                💡 <strong>청년층 종합 결론</strong>: <strong>{y_gap_top['region']}</strong>는 청년층 온라인 관심도 {y_gap_top['int_rank']}위({y_gap_top['int_score']:.1f})이나 실제 방문에서는 {y_gap_top['vis_rank']}위에 머물러 미전환 갭이 가장 큽니다. 반면 <strong>{y_eff_top['region']}</strong>는 뛰어난 교통 접근성과 인프라로 관심 대비 방문 전환율 최고효율({y_eff_top['eff']:.1f}%) 및 방문 {y_eff_top['vis_rank']}위를 달성했습니다.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1499,20 +2512,75 @@ elif active_page == "vs":
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
                 <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
                     <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 중장년층 고관심 &gt; 저방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">울산광역시</div>
-                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 4위 25.9 → 방문 13위 5.6<br><strong>(잠재 미전환 Gap 1위)</strong></div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">{o_gap_top['region']}</div>
+                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 {o_gap_top['int_rank']}위 {o_gap_top['int_score']:.1f} → 방문 {o_gap_top['vis_rank']}위 {o_gap_top['vis_score']:.1f}<br><strong>(잠재 미전환 Gap 1위)</strong></div>
                 </div>
                 <div style="background:#FFFFFF; border:1px solid #A7F3D0; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(5,150,105,0.05);">
                     <div style="font-size:0.78rem; font-weight:700; color:#059669; margin-bottom:4px;">🎯 중장년층 저관심 &lt; 고방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#065F46;">경상북도</div>
-                    <div style="font-size:0.75rem; color:#047857; margin-top:4px;">관심 2위 30.3 → 방문 2위 13.2<br><strong>(방문전환 최고효율 43.6%)</strong></div>
+                    <div style="font-size:1.15rem; font-weight:800; color:#065F46;">{o_eff_top['region']}</div>
+                    <div style="font-size:0.75rem; color:#047857; margin-top:4px;">관심 {o_eff_top['int_rank']}위 {o_eff_top['int_score']:.1f} → 방문 {o_eff_top['vis_rank']}위 {o_eff_top['vis_score']:.1f}<br><strong>(방문전환 최고효율 {o_eff_top['eff']:.1f}%)</strong></div>
                 </div>
             </div>
             <div style="padding:10px 14px; background:#ECFDF5; border-radius:8px; font-size:0.83rem; color:#065F46; line-height:1.45; border:1px solid #A7F3D0;">
-                💡 <strong>중장년층 종합 결론</strong>: 중장년층은 <strong>전북특별자치도(34.0)</strong>, <strong>경상북도(30.3)</strong>, <strong>전라남도(27.3)</strong>가 온라인 관심도와 실제 방문도 모두 Top 3를 휩쓸며 미식·역사·자연 테마의 선호도가 매우 확고합니다. 특히 <strong>경상북도</strong>는 관심 대비 방문 체류 효율이 가장 높게 나타난 반면, <strong>울산광역시</strong>나 <strong>세종특별자치시</strong>는 온라인 관심 대비 실제 방문 체류로의 전환이 저조해 체류 콘텐츠 보완이 요구됩니다.
+                💡 <strong>중장년층 종합 결론</strong>: 중장년층은 <strong>{top3_o_int.loc[0, 'region']}({top3_o_int.loc[0, 'score']:.1f})</strong>, <strong>{top3_o_int.loc[1, 'region']}({top3_o_int.loc[1, 'score']:.1f})</strong> 등이 상위권을 차지하며 고유의 테마 선호도가 확고합니다. 특히 <strong>{o_eff_top['region']}</strong>는 관심 대비 방문 체류 효율({o_eff_top['eff']:.1f}%)이 가장 높게 나타난 반면, <strong>{o_gap_top['region']}</strong>는 온라인 관심 대비 실제 방문 체류로의 전환이 저조해 체류 콘텐츠 보완이 요구됩니다.
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+    # ─────────────────────────────────────────────────────────
+    # 관심도 vs 방문도 격차 비교 바차트 (Top 3 종합 비교 하단)
+    # ─────────────────────────────────────────────────────────
+    st.markdown("#### 📊 지역별 관심도 vs 방문도 및 격차 상세 시각화")
+    col_graph_y, col_graph_o = st.columns(2)
+    with col_graph_y:
+        df_y_sorted = df_y_unified.sort_values(by="int_score", ascending=False)
+        df_y_melt = df_y_sorted.melt(id_vars=["region", "gap"], value_vars=["int_score", "vis_score"], var_name="Metric", value_name="Score")
+        df_y_melt["Metric"] = df_y_melt["Metric"].map({"int_score": "관심도", "vis_score": "방문도"})
+        
+        fig_y_bar = px.bar(
+            df_y_melt,
+            x="region",
+            y="Score",
+            color="Metric",
+            barmode="group",
+            color_discrete_map={"관심도": "#60A5FA", "방문도": "#1D4ED8"},
+            title="🔵 청년층 지역별 관심도 vs 방문도 및 격차",
+            labels={"Score": "지수 (100점 만점)", "region": "지역", "Metric": "구분", "gap": "격차 (관심-방문)"},
+            hover_data={"gap": True, "Score": ":.1f"}
+        )
+        fig_y_bar.update_layout(
+            **LAYOUT_BASE,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis_title="지역",
+            yaxis_title="지수 (100점 만점)",
+            margin=dict(l=10, r=10, t=50, b=40)
+        )
+        st.plotly_chart(fig_y_bar, use_container_width=True)
+        
+    with col_graph_o:
+        df_o_sorted = df_o_unified.sort_values(by="int_score", ascending=False)
+        df_o_melt = df_o_sorted.melt(id_vars=["region", "gap"], value_vars=["int_score", "vis_score"], var_name="Metric", value_name="Score")
+        df_o_melt["Metric"] = df_o_melt["Metric"].map({"int_score": "관심도", "vis_score": "방문도"})
+        
+        fig_o_bar = px.bar(
+            df_o_melt,
+            x="region",
+            y="Score",
+            color="Metric",
+            barmode="group",
+            color_discrete_map={"관심도": "#34D399", "방문도": "#047857"},
+            title="🟢 중장년층 지역별 관심도 vs 방문도 및 격차",
+            labels={"Score": "지수 (100점 만점)", "region": "지역", "Metric": "구분", "gap": "격차 (관심-방문)"},
+            hover_data={"gap": True, "Score": ":.1f"}
+        )
+        fig_o_bar.update_layout(
+            **LAYOUT_BASE,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            xaxis_title="지역",
+            yaxis_title="지수 (100점 만점)",
+            margin=dict(l=10, r=10, t=50, b=40)
+        )
+        st.plotly_chart(fig_o_bar, use_container_width=True)
 
     st.markdown("---")
 
@@ -1741,795 +2809,13 @@ elif active_page == "vs":
     </div>
     """, unsafe_allow_html=True)
 
-# ═══════════════════════════════════════════════════════════
-# 메뉴 4: 외국인 방문 트렌드 지도
-# ═══════════════════════════════════════════════════════════
-elif active_page == "map":
-    import folium
-    from folium.plugins import MarkerCluster
-    import streamlit.components.v1 as components
-    import requests
-
-    st.markdown('<div class="section-title">🗺️ 외국인 방문 트렌드 지도</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="insight-box">
-    <strong>외국인 방문 트렌드 지도</strong>는 공공데이터포털(한국관광공사) 및 각 글로벌 OTA 데이터를 종합하여 전국 14개 시도별 외국인 방문 지수와 주요 관광 자원 트렌드를 시각화합니다.<br>
-    <strong>통합 트렌드 지도</strong>와 <strong>공공 API 기반 실시간 관광명소 조회</strong> 기능을 제공합니다.
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 탭 구성
-    map_tab1, map_tab2 = st.tabs(["📊 14개 시도 통합 트렌드 지도", "📡 공공 API 관광명소 현황 (Mock Fallback)"])
-
-    with map_tab1:
-        st.markdown("#### 📍 청년층 vs 중장년층 외국인 방문지수 분포 비교")
-        
-        # Load GeoJSON
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        if os.path.exists(os.path.join(current_dir, "skorea_provinces_geo_simple.json")):
-            geojson_path = os.path.join(current_dir, "skorea_provinces_geo_simple.json")
-        else:
-            geojson_path = os.path.join(os.path.dirname(current_dir), "skorea_provinces_geo_simple.json")
-        
-        try:
-            with open(geojson_path, "r", encoding="utf-8") as f:
-                geojson_data = json.load(f)
-                
-            # Filter and normalize GeoJSON (exclude Seoul, Busan, Jeju)
-            filtered_features = []
-            for feature in geojson_data["features"]:
-                name = feature["properties"]["name"]
-                if name not in ["서울특별시", "부산광역시", "제주특별자치도"]:
-                    if name == "강원도":
-                        feature["properties"]["name"] = "강원특별자치도"
-                    elif name == "전라북도":
-                        feature["properties"]["name"] = "전북특별자치도"
-                    filtered_features.append(feature)
-            geojson_data["features"] = filtered_features
-            
-            # Prepare data (통합 중앙값 visit_map 기준)
-            rows_y = []
-            rows_o = []
-            for reg in REGIONS:
-                base_v = visit_map.get(reg, 0.0)
-                vis_y = base_v * sum(AGE_VISIT_RATIO[reg][0:4])
-                vis_o = base_v * sum(AGE_VISIT_RATIO[reg][4:7])
-                rows_y.append({"region": reg, "score": round(vis_y, 1)})
-                rows_o.append({"region": reg, "score": round(vis_o, 1)})
-
-            df_map_y = pd.DataFrame(rows_y)
-            df_map_o = pd.DataFrame(rows_o)
-            
-            y_score_map = df_map_y.set_index("region")["score"].to_dict()
-            o_score_map = df_map_o.set_index("region")["score"].to_dict()
-
-            # Inject scores
-            geojson_y = json.loads(json.dumps(geojson_data))
-            for feature in geojson_y["features"]:
-                name = feature["properties"]["name"]
-                feature["properties"]["score"] = y_score_map.get(name, 0.0)
-
-            geojson_o = json.loads(json.dumps(geojson_data))
-            for feature in geojson_o["features"]:
-                name = feature["properties"]["name"]
-                feature["properties"]["score"] = o_score_map.get(name, 0.0)
-
-            # Build Youth Map
-            m_y = folium.Map(location=[36.1, 127.7], zoom_start=6.8, tiles="CartoDB positron")
-            folium.Choropleth(
-                geo_data=geojson_y,
-                name="Youth Visit Index",
-                data=df_map_y,
-                columns=["region", "score"],
-                key_on="feature.properties.name",
-                fill_color="YlOrRd",
-                fill_opacity=0.75,
-                line_opacity=0.4,
-                line_color="#4B5563",
-                legend_name="방문도 지수"
-            ).add_to(m_y)
-
-            folium.GeoJson(
-                geojson_y,
-                style_function=lambda x: {'fillColor': 'transparent', 'color': 'transparent', 'weight': 0},
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["name", "score"],
-                    aliases=["지역:", "방문지수:"],
-                    localize=True,
-                    style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;"
-                )
-            ).add_to(m_y)
-
-            # Build Senior Map
-            m_o = folium.Map(location=[36.1, 127.7], zoom_start=6.8, tiles="CartoDB positron")
-            folium.Choropleth(
-                geo_data=geojson_o,
-                name="Senior Visit Index",
-                data=df_map_o,
-                columns=["region", "score"],
-                key_on="feature.properties.name",
-                fill_color="YlOrRd",
-                fill_opacity=0.75,
-                line_opacity=0.4,
-                line_color="#4B5563",
-                legend_name="방문도 지수"
-            ).add_to(m_o)
-
-            folium.GeoJson(
-                geojson_o,
-                style_function=lambda x: {'fillColor': 'transparent', 'color': 'transparent', 'weight': 0},
-                tooltip=folium.GeoJsonTooltip(
-                    fields=["name", "score"],
-                    aliases=["지역:", "방문지수:"],
-                    localize=True,
-                    style="font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;"
-                )
-            ).add_to(m_o)
-
-            # Render side-by-side
-            c_map_a, c_map_b = st.columns(2)
-            with c_map_a:
-                st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-young" style="font-size:0.95rem; padding:6px 16px;">🔵 청년층 (10대~40대) 방문 트렌드 지도</span></div>', unsafe_allow_html=True)
-                components.html(m_y._repr_html_(), height=500)
-            with c_map_b:
-                st.markdown('<div style="text-align:center; margin-bottom:10px;"><span class="badge-old" style="font-size:0.95rem; padding:6px 16px; background: linear-gradient(90deg, #059669, #10B981);">🟢 중장년층 (50대~90대) 방문 트렌드 지도</span></div>', unsafe_allow_html=True)
-                components.html(m_o._repr_html_(), height=500)
-                
-        except Exception as e:
-            st.error(f"지도를 렌더링하는 중 오류가 발생했습니다: {e}")
-
-        st.markdown("---")
-
-        # 실시간 외국어 관광 자원 조회 (API)
-        st.markdown("### 🏛️ 실시간 영문/일문 관광 정보 조회 (KTO API)")
-        sel_reg = st.selectbox("조회할 시도 선택", REGIONS, key="map_kto_region")
-        sel_lang = st.radio("언어 선택", ["English (영문)", "Japanese (일문)", "Chinese (중문 간체)"], horizontal=True, key="map_kto_lang")
-
-        KTO_AREA_CODES = {
-            "대구광역시": "4", "인천광역시": "2", "광주광역시": "5", "대전광역시": "3",
-            "울산광역시": "7", "세종특별자치시": "8", "경기도": "31", "강원특별자치도": "32",
-            "충청북도": "33", "충청남도": "34", "전북특별자치도": "37", "전라남도": "38",
-            "경상북도": "35", "경상남도": "36"
-        }
-
-        area_code = KTO_AREA_CODES.get(sel_reg)
-        service_key = "ffec4f8bc5da62df9374e291220ab4516b9502ccdda44a6d8838eb166a4030dd"
-
-        if sel_lang == "Chinese (중문 간체)":
-            st.warning("⚠️ **중문 간체 API 권한 제한 (403 Forbidden)**: 제공해주신 인증키에 해당 중문 서비스의 활용 승인이 완료되지 않아 데이터를 불러올 수 없습니다. 가상의 데이터를 임의로 표출하지 않고 실제 수신 상태를 가시화합니다.")
-        else:
-            lang_endpoint = {
-                "English (영문)": "https://apis.data.go.kr/B551011/EngService2/areaBasedList2",
-                "Japanese (일문)": "https://apis.data.go.kr/B551011/JpnService2/areaBasedList2"
-            }[sel_lang]
-            
-            params = {
-                'serviceKey': service_key,
-                'pageNo': '1',
-                'numOfRows': '5',
-                'MobileOS': 'ETC',
-                'MobileApp': 'AppTest',
-                '_type': 'json',
-                'areaCode': area_code
-            }
-            
-            with st.spinner("KTO 공공 API로부터 다국어 관광정보를 불러오는 중..."):
-                try:
-                    res = requests.get(lang_endpoint, params=params, timeout=8)
-                    if res.status_code == 200:
-                        data = res.json()
-                        items = data.get('response', {}).get('body', {}).get('items', {}).get('item', [])
-                        
-                        if items:
-                            if not isinstance(items, list):
-                                items = [items]
-                            
-                            st.markdown(f"#### 🔎 {sel_reg}의 대표 관광 정보 ({sel_lang.split()[0]}):")
-                            for item in items:
-                                title = item.get('title', 'N/A')
-                                addr = item.get('addr1', 'N/A')
-                                img = item.get('firstimage2', '')
-                                
-                                c_img, c_txt = st.columns([1, 4])
-                                with c_img:
-                                    if img:
-                                        st.image(img, use_container_width=True)
-                                    else:
-                                        st.markdown('<div style="background-color:#E2E8F0;height:80px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:0.8rem;">No Image</div>', unsafe_allow_html=True)
-                                with c_txt:
-                                    st.markdown(f"**📌 {title}**")
-                                    st.markdown(f"📍 {addr}")
-                                    st.markdown("---")
-                        else:
-                            st.info("해당 지역의 검색 결과가 없습니다.")
-                    else:
-                        st.error(f"API 호출 실패 (Status Code: {res.status_code})")
-                except Exception as e:
-                    st.error(f"데이터 로드 중 에러 발생: {e}")
-
-        st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [통합 트렌드 및 API 조회 인사이트]</span> 지리적 Choropleth 투영을 통해 청년층은 수도권·강원 동서축(레저/도시) 권역에, 중장년층은 전라·경상 내륙 클러스터(미식/전통) 권역에 강한 밀집도를 보임을 가시적으로 확인할 수 있으며, KTO API를 통해 권역별 실시간 외래 관광지 상세 자원을 확인할 수 있습니다.</div>""", unsafe_allow_html=True)
-
-    with map_tab2:
-        st.markdown("#### 🗺️ TarRlteTarvstat API 기반 주요 명소 (Fallback 작동)")
-
-        def get_foreign_visitor_data(service_key, target_ym):
-            url = "http://apis.data.go.kr/B551011/TarRlteTarvstatService/areaBasedList" 
-            params = {
-                'serviceKey': service_key,
-                'pageNo': '1',
-                'numOfRows': '100',
-                'MobileOS': 'ETC',
-                'MobileApp': 'AppTest',
-                '_type': 'json',
-                'baseYm': target_ym
-            }
-            try:
-                response = requests.get(url, params=params, timeout=5)
-                if response.status_code == 200:
-                    data = response.json()
-                    items = data['response']['body']['items']['item']
-                    return pd.DataFrame(items)
-                else:
-                    return get_mock_data()
-            except Exception:
-                return get_mock_data()
-
-        def get_mock_data():
-            mock_data = [
-                {"signguNm": "경주시", "lat": 35.8561, "lng": 129.2247, "visitorCnt": 15400, "mainItem": "전통문화/한복체험"},
-                {"signguNm": "강릉시", "lat": 37.7518, "lng": 128.8762, "visitorCnt": 12800, "mainItem": "K-POP촬영지/바다"},
-                {"signguNm": "전주시", "lat": 35.8242, "lng": 127.1479, "visitorCnt": 9800,  "mainItem": "로컬푸드/한옥마을"},
-                {"signguNm": "평창군", "lat": 37.3704, "lng": 128.3899, "visitorCnt": 8500,  "mainItem": "겨울스포츠/양떼농장"},
-                {"signguNm": "단양군", "lat": 36.9845, "lng": 128.3653, "visitorCnt": 6200,  "mainItem": "패러글라이딩/액티비티"},
-                {"signguNm": "포항시", "lat": 36.0190, "lng": 129.3434, "visitorCnt": 7400,  "mainItem": "K-드라마촬영지/바다 호미곶"}
-            ]
-            return pd.DataFrame(mock_data)
-
-        # 데이터 호출
-        df_map = get_foreign_visitor_data(service_key, "202605")
-        
-        st.markdown("⚠️ **공공데이터포털 500 에러 감지**: API 호출 실패(500)로 인해 가상 데이터(서울, 부산, 제주 제외 로컬 핫플 6개소)를 로드하여 복구하였습니다.")
-
-        m2 = folium.Map(location=[36.5, 127.8], zoom_start=7.5, tiles="OpenStreetMap")
-        marker_cluster = MarkerCluster().add_to(m2)
-
-        for idx, row in df_map.iterrows():
-            radius_size = int(row['visitorCnt']) / 500
-            if radius_size < 10: 
-                radius_size = 10
-            
-            popup_html = f"""
-            <div style="font-family: Arial, sans-serif; width: 180px; color:#0F172A;">
-                <h4><b>{row['signguNm']}</b></h4>
-                <hr style="margin: 5px 0;">
-                <b>외국인 방문수:</b> {int(row['visitorCnt']):,} 명<br>
-                <b>주요 트렌드:</b> {row['mainItem']}
-            </div>
-            """
-            popup = folium.Popup(popup_html, max_width=250)
-
-            folium.CircleMarker(
-                location=[row['lat'], row['lng']],
-                radius=radius_size,
-                popup=popup,
-                color='#3186cc',
-                fill=True,
-                fill_color='#63a4ff',
-                fill_opacity=0.6,
-                tooltip=f"{row['signguNm']} (클릭하여 상세 보기)"
-            ).add_to(marker_cluster)
-
-        components.html(m2._repr_html_(), height=550)
-        
-        st.dataframe(df_map[['signguNm', 'visitorCnt', 'mainItem']], use_container_width=True, hide_index=True)
-
-        st.markdown("""<div style="background-color:#FEFCE8; border-left:4px solid #EAB308; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#CA8A04;">📌 [주요 명소 API 조회 인사이트]</span> 실시간 외래 관광객 수와 대표 매력물 정보를 통해, 지방권역의 주요 거점 관광지(경주 한복, 강릉 바다, 전주 한옥 등) 유입 테마와 현황을 직관적으로 파악할 수 있습니다.</div>""", unsafe_allow_html=True)
-
-    # 페이지 하단 종합 분석 인사이트 (탭 외부에 배치하여 항상 노출)
-    st.markdown("""
-    <div class="insight-summary-card insight-map" style="margin-top:28px;">
-        <h4 style="margin:0 0 10px 0; color:#CA8A04; font-weight:700;">💡 주요 분석 인사이트 — 외국인 방문 트렌드 지도 및 실시간 자원 분석</h4>
-        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
-            14개 시도별 외래객 방문 분포를 지리적 히트맵(Choropleth Heatmap)으로 시각화한 결과, <strong>외래객 공간 유동의 '수도권 집중' 및 '로컬 분화' 패턴</strong>이 뚜렷하게 증명됩니다.<br>
-            <strong>청년층 (10대~40대)</strong>의 방문 밀도는 수도권(서울·경기·인천) 관문에서 강원권(강릉·속초 등 바다 및 레저 리조트)으로 연결되는 '동·서 활성 축'을 형성하고 있습니다. 반면, <strong>중장년층 (50대~90대)</strong>의 공간 분포는 전주 한옥마을 등 <strong>전라권(미식·문화 중심)</strong>과 경주·안동 등 <strong>경상권(역사·유산 중심)</strong> 내륙 거점 클러스터에 국지적으로 강하게 밀집됩니다. 따라서 <strong>'청년=동·서 레저벨트', '중장년=남부 역사·미식벨트'</strong>로 지리적 타겟팅을 이원화한 맞춤형 로컬 관광 정책이 필수적입니다.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════════════════════
-# 메뉴 5: 외국인 인스타그램 로컬 트렌드
-# ═══════════════════════════════════════════════════════════
-elif active_page == "insta_trends":
-    st.markdown('<div class="section-title">📱 외국인 인스타그램 로컬 트렌드 — 청년층 관심도 & 방문 테마</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="insight-box">
-    <strong>인스타그램 로컬 트렌드</strong>는 Apify Instagram Scraper API를 통해 서울/부산/제주를 제외한 4대 핵심 로컬 권역(수원, 강릉/양양, 전주, 경주)의 해시태그 게시물을 수집·분석한 데이터입니다.<br>
-    인스타그램 주 사용자인 <strong>외국인 청년층(10대~40대)</strong>의 관심 지역과 구체적인 방문 테마(서핑, 한옥체험, 성곽투어, 미식 등) 및 소셜 참여도(좋아요, 댓글)를 보여줍니다.
-    </div>
-    """, unsafe_allow_html=True)
-
-    csv_path = "instagram_korea_local_data.csv"
-    
-    # ── 데이터 로드 및 전처리 ──
-    @st.cache_data
-    def load_instagram_data():
-        if os.path.exists(csv_path):
-            try:
-                df = pd.read_csv(csv_path)
-                # 결측치 처리 및 음수(숨겨진 좋아요 등) 보정
-                df['likesCount'] = df['likesCount'].fillna(0).astype(int).clip(lower=0)
-                df['commentsCount'] = df['commentsCount'].fillna(0).astype(int).clip(lower=0)
-                df['caption'] = df['caption'].fillna('')
-                df['inputQuery'] = df['inputQuery'].fillna('')
-                
-                # 해시태그 -> 지역 매핑
-                HASHTAG_TO_REGION = {
-                    "gyeongju": "경상북도", "gyeongjutrip": "경상북도", "hanokstay": "경상북도",
-                    "gangneung": "강원특별자치도", "yangyang": "강원특별자치도", "koreasurfing": "강원특별자치도",
-                    "jeonju": "전북특별자치도", "jeonjuhanokvillage": "전북특별자치도", "koreanfoodtrip": "전북특별자치도",
-                    "suwon": "경기도", "suwonhwaseongfortress": "경기도", "starfieldsuwon": "경기도"
-                }
-                df['지역'] = df['inputQuery'].map(HASHTAG_TO_REGION).fillna('기타')
-                df['engagement'] = df['likesCount'] + df['commentsCount']
-                return df
-            except Exception:
-                return pd.DataFrame()
-        else:
-            return pd.DataFrame()
-
-    df_insta = load_instagram_data()
-
-    # 데이터가 없을 때의 UI
-    if df_insta.empty:
-        st.warning("⚠️ 아직 인스타그램 데이터가 수집되지 않았거나 파일이 존재하지 않습니다. 아래 버튼을 눌러 Apify API 실시간 수집을 진행해 주세요.")
-    
-    # 실시간 업데이트 버튼
-    col_top_a, col_top_b = st.columns([3, 1])
-    with col_top_b:
-        if st.button("🔄 실시간 SNS 수집 실행", use_container_width=True, help="Apify Actor를 사용하여 최신 인스타그램 데이터를 가져옵니다."):
-            with st.spinner("Apify Instagram Scraper 실행 중 (약 30초~1분 소요)..."):
-                try:
-                    import subprocess
-                    result = subprocess.run([".venv\\Scripts\\python.exe", "fetch_instagram_data.py"], capture_output=True, text=True)
-                    if result.returncode == 0:
-                        st.success("데이터가 성공적으로 수집 및 저장되었습니다!")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(f"수집 실패: {result.stderr or result.stdout}")
-                except Exception as e:
-                    st.error(f"에러 발생: {e}")
-
-    if not df_insta.empty:
-        # KPI Cards
-        total_posts = len(df_insta)
-        total_likes = df_insta['likesCount'].sum()
-        total_comments = df_insta['commentsCount'].sum()
-        avg_eng = df_insta['engagement'].mean()
-
-        k1, k2, k3, k4 = st.columns(4)
-        with k1:
-            st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">수집된 포스트 수</div>
-            <div class="kpi-value">{total_posts}개</div>
-            <div class="kpi-delta-up">📱 SNS 게시글 샘플</div>
-            </div>""", unsafe_allow_html=True)
-        with k2:
-            st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">누적 좋아요 수</div>
-            <div class="kpi-value">{total_likes:,}</div>
-            <div class="kpi-delta-up">❤️ 총 공감/반응</div>
-            </div>""", unsafe_allow_html=True)
-        with k3:
-            st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">누적 댓글 수</div>
-            <div class="kpi-value">{total_comments:,}</div>
-            <div class="kpi-delta-up" style="color:#059669;">💬 외국인 피드백</div>
-            </div>""", unsafe_allow_html=True)
-        with k4:
-            st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">평균 인게이지먼트</div>
-            <div class="kpi-value">{avg_eng:.1f}</div>
-            <div class="kpi-delta-up">🔥 게시물 평균 참여</div>
-            </div>""", unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        insta_tab1, insta_tab2, insta_tab3 = st.tabs([
-            "📊 소셜 참여도 분석 (Engagement)", 
-            "🏷️ 핵심 키워드 & 테마 분석 (Keywords)", 
-            "📸 실시간 인기 포스트 피드 (Posts)"
-        ])
-
-        # ── 탭 1: 참여도 분석 ──
-        with insta_tab1:
-            st.markdown("#### 📍 수집 데이터 기준 4대 핵심 권역 분포")
-            
-            # 1. 지역별 게시물 수
-            df_reg_counts = df_insta['지역'].value_counts().reset_index()
-            df_reg_counts.columns = ['지역', '게시물수']
-            
-            # 2. 지역별 평균 인게이지먼트
-            df_reg_avg_eng = df_insta.groupby('지역')['engagement'].mean().reset_index().round(1)
-            
-            c_chart1, c_chart2 = st.columns(2)
-            with c_chart1:
-                fig1 = px.bar(
-                    df_reg_counts, x='지역', y='게시물수',
-                    title='지역별 인스타그램 게시물 분포',
-                    labels={'게시물수': '게시물 수 (개)', '지역': '권역'},
-                    color='지역',
-                    color_discrete_map={
-                        '경기도': '#3B82F6', '강원특별자치도': '#2563EB', 
-                        '전북특별자치도': '#10B981', '경상북도': '#059669'
-                    }
-                )
-                fig1.update_layout(LAYOUT_BASE, showlegend=False)
-                st.plotly_chart(fig1, use_container_width=True)
-                
-            with c_chart2:
-                fig2 = px.bar(
-                    df_reg_avg_eng, x='지역', y='engagement',
-                    title='지역별 게시물 평균 참여도 (좋아요 + 댓글)',
-                    labels={'engagement': '평균 참여도 (회)', '지역': '권역'},
-                    color='지역',
-                    color_discrete_map={
-                        '경기도': '#3B82F6', '강원특별자치도': '#2563EB', 
-                        '전북특별자치도': '#10B981', '경상북도': '#059669'
-                    }
-                )
-                fig2.update_layout(LAYOUT_BASE, showlegend=False)
-                st.plotly_chart(fig2, use_container_width=True)
-
-            st.markdown("#### 📈 인스타그램 포스트별 좋아요 vs 댓글 상관 분석")
-            fig3 = px.scatter(
-                df_insta, x='likesCount', y='commentsCount',
-                color='지역', hover_name='inputQuery',
-                size='engagement',
-                labels={'likesCount': '좋아요 수 (Likes)', 'commentsCount': '댓글 수 (Comments)', '지역': '권역'},
-                title='개별 인스타그램 포스트 반응도 산점도',
-                color_discrete_map={
-                    '경기도': '#3B82F6', '강원특별자치도': '#2563EB', 
-                    '전북특별자치도': '#10B981', '경상북도': '#059669'
-                }
-            )
-            fig3.update_layout(LAYOUT_BASE)
-            st.plotly_chart(fig3, use_container_width=True)
-
-        # ── 탭 2: 키워드 & 테마 분석 ──
-        with insta_tab2:
-            st.markdown("#### 🏷️ 외국인 게시물 텍스트 핵심 테마(Theme) 추출")
-            st.markdown("""
-            게시물 본문(Caption)의 영문 텍스트 내 키워드를 기반으로 외국인 청년층이 어떤 활동을 즐기고 관심을 가지는지 분류한 통계입니다.
-            """)
-            
-            categories = {
-                "🏯 역사문화/전통 (Hanok & History)": ["hanok", "traditional", "palace", "history", "fortress", "culture", "shrine", "temple", "hwaseong", "heritage", "gyeongju", "jeonju"],
-                "🏄 해양 레저/스포츠 (Beach & Surf)": ["surf", "surfing", "wave", "beach", "sea", "ocean", "yangyang", "board", "water", "gangneung"],
-                "🍔 로컬 미식/맛집 (Food & Café)": ["food", "yummy", "taste", "delicious", "eat", "cafe", "coffee", "restaurant", "mukbang", "koreanfood", "streetfood", "k-food"],
-                "🛍️ 쇼핑/복합공간 (Shopping & Mall)": ["starfield", "mall", "shopping", "store", "buy", "library"],
-                "📸 감성/포토스팟 (Photo Spot & Vibe)": ["view", "mood", "instagrammable", "aesthetic", "beautiful", "nightview", "photo", "vibe"]
-            }
-            
-            category_counts = {cat: 0 for cat in categories}
-            for caption in df_insta['caption']:
-                cap_lower = caption.lower()
-                for cat, keywords in categories.items():
-                    for kw in keywords:
-                        if kw in cap_lower:
-                            category_counts[cat] += 1
-                            break
-                            
-            df_cat = pd.DataFrame(list(category_counts.items()), columns=['테마', '키워드검출빈도'])
-            df_cat = df_cat.sort_values(by='키워드검출빈도', ascending=False)
-            
-            fig_cat = px.bar(
-                df_cat, y='테마', x='키워드검출빈도',
-                orientation='h',
-                title='게시물 본문 키워드 분석을 통해 본 청년층 관심 테마',
-                labels={'키워드검출빈도': '검출 빈도 (게시글 수)', '테마': '주요 여행 테마'},
-                color='키워드검출빈도',
-                color_continuous_scale='Blues'
-            )
-            fig_cat.update_layout(LAYOUT_BASE)
-            st.plotly_chart(fig_cat, use_container_width=True)
-
-            st.markdown("#### 🔑 각 해시태그별 평균 참여도 비교")
-            df_hash_avg = df_insta.groupby('inputQuery')['engagement'].mean().reset_index()
-            df_hash_avg = df_hash_avg.sort_values(by='engagement', ascending=False)
-            
-            fig_hash = px.bar(
-                df_hash_avg, x='inputQuery', y='engagement',
-                title='검색 해시태그별 평균 반응도 (좋아요 + 댓글)',
-                labels={'engagement': '평균 반응도 (회)', 'inputQuery': '해시태그'},
-                color='engagement',
-                color_continuous_scale='Viridis'
-            )
-            fig_hash.update_layout(LAYOUT_BASE)
-            st.plotly_chart(fig_hash, use_container_width=True)
-
-        # ── 탭 3: 실시간 인기 포스트 피드 ──
-        with insta_tab3:
-            st.markdown("#### 📸 외국인 반응 중심 인기 포스트 쇼케이스")
-            
-            c_filt1, c_filt2 = st.columns(2)
-            with c_filt1:
-                sel_region_insta = st.selectbox("분석 권역 필터", ["전체"] + list(df_insta['지역'].unique()), key="sel_region_insta")
-            with c_filt2:
-                sort_by = st.selectbox("정렬 기준", ["인기순 (좋아요+댓글)", "최신순", "댓글 많은 순"], key="sort_by_insta")
-
-            df_display = df_insta.copy()
-            if sel_region_insta != "전체":
-                df_display = df_display[df_display['지역'] == sel_region_insta]
-                
-            if sort_by == "인기순 (좋아요+댓글)":
-                df_display = df_display.sort_values(by='engagement', ascending=False)
-            elif sort_by == "댓글 많은 순":
-                df_display = df_display.sort_values(by='commentsCount', ascending=False)
-            else:
-                df_display = df_display.sort_values(by='timestamp', ascending=False)
-
-            for idx, row in df_display.head(12).reset_index(drop=True).iterrows():
-                if idx % 3 == 0:
-                    cols = st.columns(3)
-                
-                with cols[idx % 3]:
-                    caption_short = row['caption'][:120] + "..." if len(row['caption']) > 120 else row['caption']
-                    timestamp_formatted = str(row['timestamp'])[:10] if pd.notna(row['timestamp']) else 'N/A'
-                    
-                    st.markdown(f"""
-                    <div style="background-color:#FFFFFF; border:1px solid #E2E8F0; border-radius:12px; padding:16px; margin-bottom:16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); min-height: 250px; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <span style="background-color:#DBEAFE; color:#1E40AF; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:10px; margin-bottom:8px; display:inline-block;">
-                                #{row['inputQuery']}
-                            </span>
-                            <span style="float:right; font-size:0.75rem; color:#94A3B8;">{timestamp_formatted}</span>
-                            <p style="font-size:0.85rem; color:#334155; line-height:1.5; margin:8px 0; text-align:justify; height:80px; overflow:hidden;">
-                                {caption_short}
-                            </p>
-                        </div>
-                        <div style="border-top:1px solid #F1F5F9; padding-top:10px; margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:0.85rem; color:#475569;">
-                                <b>❤️ {row['likesCount']:,}</b> &nbsp;&nbsp; <b>💬 {row['commentsCount']:,}</b>
-                            </span>
-                            <a href="{row['url']}" target="_blank" style="text-decoration:none; background-color:#1D4ED8; color:white; font-size:0.75rem; font-weight:700; padding:6px 12px; border-radius:8px; display:inline-block; transition: background-color 0.2s;">
-                                View Post
-                            </a>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-        # ── 하단 종합 분석 인사이트 ──
-        st.markdown("""
-        <div class="insight-summary-card insight-interest" style="margin-top:28px;">
-            <h4 style="margin:0 0 10px 0; color:#1D4ED8; font-weight:700;">💡 청년층 인스타그램 로컬 데이터 종합 인사이트</h4>
-            <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
-                인스타그램에서 수집된 해시태그 게시물을 분석한 결과, <strong>외국인 청년층(10대~40대)</strong>의 관심사와 방문 목적이 권역별로 뚜렷한 세분화 경향을 보입니다.<br>
-                1. <strong>강원 동서 레저벨트 (양양/강릉)</strong>: <code>#koreasurfing</code>, <code>#yangyang</code> 등 해상 레포츠와 서핑 강습, 바다 뷰 카페 탐방 등 <strong>'트렌디한 레저 및 힐링'</strong> 키워드가 압도적입니다. 평균 인게이지먼트(좋아요+댓글 수)도 매우 높은 수준을 보여주어, 젊은 외래 관광객 사이에서 바이럴 파급력이 가장 높은 권역으로 실증되었습니다.<br>
-                2. <strong>수도권 배후 쇼핑·역사벨트 (수원)</strong>: <code>#starfieldsuwon</code>(별마당 도서관 및 대형 복합쇼핑)과 <code>#suwonhwaseongfortress</code>(문화유산 투어)가 공존하는 독특한 결합을 보입니다. 청년들이 인스타그래머블한 현대적 시설물과 유서 깊은 성곽 야경을 하루 코스로 묶어 방문하고 있음을 본문 텍스트 분석이 보여줍니다.<br>
-                3. <strong>전라·경상 역사 전통벨트 (전주/경주)</strong>: <code>#hanokstay</code>, <code>#jeonjuhanokvillage</code>, <code>#gyeongju</code> 키워드는 한국 고유의 <strong>'전통 숙박체험 및 한복 투어'</strong> 매력물이 축을 이룹니다. 특히 10대~30대 여성 외래객들이 전통 한옥 배경의 인생사진(Aesthetic Photo)을 남기는 공간으로 널리 소비되며 높은 정서적 교감을 보이고 있습니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-
-# ═══════════════════════════════════════════════════════════
-# 메뉴 6: 외국인 실시간 피드백 및 관심도/방문도 분석
-# ═══════════════════════════════════════════════════════════
-elif active_page == "foreign_feedback":
-    st.markdown('<div class="section-title">💬 외국인 실시간 피드백 및 관심도/방문도 분석</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="insight-box">
-    본 페이지는 <strong>네이버 지도</strong> 및 <strong>캐치테이블 글로벌</strong>에서 실시간 수집된 외국어 리뷰 데이터를 기반으로 관심도와 방문도를 산출한 결과입니다.<br>
-    각 수집 채널별로 평점과 빈도수를 표준화(0~100점)하여 통합한 후, <strong>중앙값(Median)</strong>을 통해 최종 관심도와 방문도를 산출합니다.
-    </div>
-    """, unsafe_allow_html=True)
-
-    csv_file = "foreign_dashboard_data.csv"
-    
-    # 데이터 로드
-    @st.cache_data(ttl=600)
-    def load_foreign_raw_data():
-        if not os.path.exists(csv_file):
-            dummy_data = {
-                "source": ["Naver Map", "CatchTable Global", "Naver Map", "CatchTable Global", "Naver Map", "Naver Map"],
-                "city": ["경주", "경주", "강릉", "강릉", "수원", "안동"],
-                "review_text": [
-                    "The lights of Donggung Palace at night were superb! Loved Gyeongju.",
-                    "Easy to book via Catchtable Global. Great English menu description.",
-                    "Beautiful Gangneung beach and lovely soft tofu ice cream.",
-                    "Had to wait a bit but booking ahead saved my time.",
-                    "Suwon Hwaseong Fortress wall is massive and stunning during sunset.",
-                    "Andong Hahoe village feels like traveling back in time. Amazing."
-                ],
-                "detected_lang": ["en", "en", "en", "en", "en", "en"]
-            }
-            df = pd.DataFrame(dummy_data)
-            df.to_csv(csv_file, index=False, encoding="utf-8-sig")
-        return pd.read_csv(csv_file)
-
-    df_raw = load_foreign_raw_data()
-
-    # 감성 평점 규칙 함수 정의 (동일한 기준 0~5점 척도)
-    def calculate_sentiment_rating(text):
-        if not isinstance(text, str):
-            return 3.5
-        rating = 3.5
-        pos_words = ["great", "delicious", "good", "nice", "amazing", "wonderful", "perfect", "loved", "friendly", "best", "yummy", "맛있", "최고", "좋", "친절", "superb"]
-        text_lower = text.lower()
-        for word in pos_words:
-            if word in text_lower:
-                rating += 1.0
-                break
-        if len(text) > 50:
-            rating += 0.5
-        return min(rating, 5.0)
-
-    df_raw["rating"] = df_raw["review_text"].apply(calculate_sentiment_rating)
-
-    # 관심도 & 방문도 지표 산출 프로세스
-    # 각 플랫폼(Naver Map, CatchTable Global)별로 도시 기준 집계
-    cities_list = ["경주", "강릉", "수원", "안동"]
-    
-    metrics = []
-    
-    # 각 플랫폼별 최대값 산출용 카운트
-    counts_naver = df_raw[df_raw["source"] == "Naver Map"]["city"].value_counts().to_dict()
-    counts_catch = df_raw[df_raw["source"] == "CatchTable Global"]["city"].value_counts().to_dict()
-    
-    max_count_naver = max(counts_naver.values()) if counts_naver else 1.0
-    max_count_catch = max(counts_catch.values()) if counts_catch else 1.0
-    
-    for city in cities_list:
-        # Naver Map 데이터 필터링
-        naver_df = df_raw[(df_raw["city"] == city) & (df_raw["source"] == "Naver Map")]
-        n_count = len(naver_df)
-        n_rating = naver_df["rating"].mean() if n_count > 0 else 3.5 # 결측시 기본 3.5
-        
-        # CatchTable 데이터 필터링
-        catch_df = df_raw[(df_raw["city"] == city) & (df_raw["source"] == "CatchTable Global")]
-        c_count = len(catch_df)
-        c_rating = catch_df["rating"].mean() if c_count > 0 else 3.5
-        
-        # 1. 방문도 지수화 (표준화 0~100)
-        n_visit_score = (n_count / max_count_naver) * 100.0 if max_count_naver > 0 else 0.0
-        c_visit_score = (c_count / max_count_catch) * 100.0 if max_count_catch > 0 else 0.0
-        
-        # 2. 관심도 지수화 (동일 5점 만점 기준 -> 0~100 환산)
-        n_interest_score = (n_rating / 5.0) * 100.0
-        c_interest_score = (c_rating / 5.0) * 100.0
-        
-        # 3. 통합값의 중앙값(Median) 산출
-        integrated_visit = float(np.median([n_visit_score, c_visit_score]))
-        integrated_interest = float(np.median([n_interest_score, c_interest_score]))
-        
-        metrics.append({
-            "도시": city,
-            "네이버 평점 (5점)": round(n_rating, 2),
-            "캐치테이블 평점 (5점)": round(c_rating, 2),
-            "네이버 방문지수": round(n_visit_score, 1),
-            "캐치테이블 방문지수": round(c_visit_score, 1),
-            "통합 관심도 (중앙값)": round(integrated_interest, 1),
-            "통합 방문도 (중앙값)": round(integrated_visit, 1)
-        })
-
-    df_metrics = pd.DataFrame(metrics)
-
-    # 1. 상단 요약 지표 카드
-    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-    with m_col1:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">수집된 외국어 피드백 수</div>
-        <div class="kpi-value">{len(df_raw)}개</div>
-        <div class="kpi-delta-up">📱 실시간 피드</div>
-        </div>""", unsafe_allow_html=True)
-    with m_col2:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">네이버 지도 리뷰 수</div>
-        <div class="kpi-value">{len(df_raw[df_raw["source"] == 'Naver Map'])}개</div>
-        <div class="kpi-delta-up">🌐 Naver Map</div>
-        </div>""", unsafe_allow_html=True)
-    with m_col3:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">캐치테이블 글로벌 예약 수</div>
-        <div class="kpi-value">{len(df_raw[df_raw["source"] == 'CatchTable Global'])}개</div>
-        <div class="kpi-delta-up" style="color:#059669;">🍽️ CatchTable</div>
-        </div>""", unsafe_allow_html=True)
-    with m_col4:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">모니터링 대상 도시 수</div>
-        <div class="kpi-value">4개 시군</div>
-        <div class="kpi-delta-up">🏆 로컬 타겟</div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # 2. 통합 결과 뷰어 테이블
-    st.markdown("### 🏆 플랫폼 통합 관심도 & 방문도 분석 결과")
-    st.dataframe(df_metrics, use_container_width=True, hide_index=True)
-
-    # 3. 차트 영역 (2단 구성)
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("#### 📊 통합 관심도 vs 방문도 지수 비교")
-        df_melted = df_metrics.melt(id_vars="도시", value_vars=["통합 관심도 (중앙값)", "통합 방문도 (중앙값)"], var_name="지표", value_name="점수")
-        fig_bar = px.bar(
-            df_melted, x="도시", y="점수", color="지표", barmode="group",
-            color_discrete_map={"통합 관심도 (중앙값)": "#1D4ED8", "통합 방문도 (중앙값)": "#059669"},
-            template="plotly_white"
-        )
-        fig_bar.update_layout(LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=40))
-        st.plotly_chart(fig_bar, use_container_width=True)
-        
-    with c2:
-        st.markdown("#### 🥧 수집 채널별 피드백 비율")
-        channel_counts = df_raw["source"].value_counts().reset_index()
-        channel_counts.columns = ["플랫폼", "리뷰 수"]
-        fig_pie = px.pie(
-            channel_counts, values="리뷰 수", names="플랫폼", hole=0.4,
-            color_discrete_sequence=["#60A5FA", "#34D399"],
-            template="plotly_white"
-        )
-        fig_pie.update_layout(LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=40))
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    # 4. 실시간 외국어 피드 리스트
-    st.markdown("---")
-    st.markdown("### 📸 외국어 피드백 목록 (한국어 차단 완료)")
-    
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        selected_city = st.selectbox("도시 필터", ["전체"] + cities_list, key="foreign_city_filt")
-    with col_f2:
-        selected_source = st.selectbox("플랫폼 필터", ["전체", "Naver Map", "CatchTable Global"], key="foreign_source_filt")
-
-    df_filtered = df_raw.copy()
-    if selected_city != "전체":
-        df_filtered = df_filtered[df_filtered["city"] == selected_city]
-    if selected_source != "전체":
-        df_filtered = df_filtered[df_filtered["source"] == selected_source]
-
-    st.dataframe(
-        df_filtered[["city", "source", "review_text", "detected_lang", "rating"]],
-        column_config={
-            "city": "도시",
-            "source": "플랫폼",
-            "review_text": "외국인 남김말 (영어/일어 등)",
-            "detected_lang": "감지된 언어",
-            "rating": "평가 점수 (5점)"
-        },
-        use_container_width=True,
-        hide_index=True
-    )
-
-    # 5. 수집 실행 컨트롤 타워
-    st.markdown("---")
-    st.markdown("### ⚙️ 데이터 동기화 관리")
-    col_btn_a, col_btn_b = st.columns([3, 1])
-    with col_btn_b:
-        if st.button("🔄 크롤러 수동 구동 및 신규 데이터 가져오기", use_container_width=True):
-            with st.spinner("네이버 지도 및 캐치테이블에서 새로운 외국인 리뷰를 분석하고 있습니다..."):
-                try:
-                    import subprocess
-                    result = subprocess.run([".venv\\Scripts\\python.exe", "collector.py"], capture_output=True, text=True)
-                    if result.returncode == 0:
-                        st.success("데이터 최신화 완료! 대시보드가 새로고침됩니다.")
-                        st.cache_data.clear()
-                        st.rerun()
-                    else:
-                        st.error(f"수집 실패: {result.stderr or result.stdout}")
-                except Exception as e:
-                    st.error(f"수집 스크립트 실행 중 에러가 발생했습니다: {e}")
-
-
 # ─────────────────────────────────────────────────────────
 # 푸터
 # ─────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown("""
 <div style="text-align:center;color:#94A3B8;font-size:0.8rem;padding:8px;">
-📊 구글 트렌드 | TripAdvisor | Tumblr | KKday | GetYourGuide | Creatrip | KTO | 2025.06 ~ 2026.05 기준 | 서울·부산·제주 제외 14개 시도<br>
+📊 인스타그램 | 캐치테이블 | 네이버 지도 | 구글 트렌드 | TripAdvisor | Tumblr | KKday | GetYourGuide | Creatrip | KTO | 2025.06 ~ 2026.05 기준 | 서울·부산·제주 제외 14개 시도<br>
 본 지수는 각 플랫폼에서 수집된 외래객 관심·방문 데이터를 정규화한 후 연령그룹(청년층, 중장년층)별 분포 비율을 반영하여 중간값(Median)으로 통합한 결과입니다.
 </div>
 """, unsafe_allow_html=True)
