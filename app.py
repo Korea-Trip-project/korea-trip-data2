@@ -2768,22 +2768,36 @@ elif active_page == "vs":
             on="연령대"
         ).set_index("연령대")
 
+        # Render compare chips in two columns at the top to align charts perfectly
+        col_chip1, col_chip2 = st.columns(2)
+        with col_chip1:
+            row_y = df_sel[df_sel["연령그룹"] == GRP_YOUNG_LABEL].iloc[0]
+            gap_color_y = "#DC2626" if row_y["Gap"] > 0 else "#059669"
+            st.markdown(f"""
+            <div class="compare-chip">
+            <span class="badge-young">{GRP_YOUNG_LABEL}</span>
+            관심도지수 <strong>{row_y['관심도지수']:.1f}</strong> |
+            방문도지수 <strong>{row_y['방문도지수']:.1f}</strong> |
+            전환효율 <strong>{row_y['전환효율']:.2f}</strong> |
+            Gap <strong style="color:{gap_color_y};">{row_y['Gap']:+.1f}</strong>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_chip2:
+            row_o = df_sel[df_sel["연령그룹"] == GRP_OLD_LABEL].iloc[0]
+            gap_color_o = "#DC2626" if row_o["Gap"] > 0 else "#059669"
+            st.markdown(f"""
+            <div class="compare-chip">
+            <span class="badge-old">{GRP_OLD_LABEL}</span>
+            관심도지수 <strong>{row_o['관심도지수']:.1f}</strong> |
+            방문도지수 <strong>{row_o['방문도지수']:.1f}</strong> |
+            전환효율 <strong>{row_o['전환효율']:.2f}</strong> |
+            Gap <strong style="color:{gap_color_o};">{row_o['Gap']:+.1f}</strong>
+            </div>
+            """, unsafe_allow_html=True)
+
         col1, col2 = st.columns(2)
         with col1:
-            for _, row in df_sel.iterrows():
-                grp = row["연령그룹"]
-                badge = "badge-young" if grp == GRP_YOUNG_LABEL else "badge-old"
-                gap_color = "#DC2626" if row["Gap"] > 0 else "#059669"
-                st.markdown(f"""
-                <div class="compare-chip">
-                <span class="{badge}">{grp}</span>
-                관심도지수 <strong>{row['관심도지수']:.1f}</strong> |
-                방문도지수 <strong>{row['방문도지수']:.1f}</strong> |
-                전환효율 <strong>{row['전환효율']:.2f}</strong> |
-                Gap <strong style="color:{gap_color};">{row['Gap']:+.1f}</strong>
-                </div>
-                """, unsafe_allow_html=True)
-
             # 레이더 — 관심도 vs 방문도
             cats = AGE_LABELS + [AGE_LABELS[0]]
             i_vals = [df_age_sel.loc[a, "관심도지수"] if a in df_age_sel.index else 0 for a in AGE_LABELS] + \
@@ -2808,9 +2822,9 @@ elif active_page == "vs":
                 ),
                 paper_bgcolor="#FFFFFF",
                 font_color="#0F172A",
-                legend=dict(bgcolor="rgba(0,0,0,0)"),
+                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
                 title=dict(text=f"{sel_cmp} — 관심도 vs 방문도 레이더", font_color="#1D4ED8"),
-                margin=dict(l=60, r=60, t=70, b=20)
+                margin=dict(l=60, r=60, t=70, b=50)
             )
             st.plotly_chart(fig_rv, use_container_width=True)
 
@@ -2845,8 +2859,8 @@ elif active_page == "vs":
             ))
             fig_bar_cmp.update_layout(
                 **LAYOUT_BASE,
-                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="bottom", y=1.02),
-                margin=dict(l=0, r=0, t=45, b=20),
+                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
+                margin=dict(l=0, r=0, t=65, b=50),
                 title=dict(text=f"{sel_cmp} — 연령대별 관심도 vs 방문도 및 Gap", font_color="#1D4ED8")
             )
             fig_bar_cmp.update_xaxes(gridcolor=GRID_COLOR)
