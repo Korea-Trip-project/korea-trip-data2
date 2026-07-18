@@ -19,17 +19,18 @@ import re
 # ─────────────────────────────────────────────────────────
 # 페이지 기본 설정
 # ─────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Korea City Trip",
-    page_icon="🗺️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Korea City Trip",
+        page_icon="🗺️",
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
 
 # ─────────────────────────────────────────────────────────
 # CSS 스타일 — 라이트 모드
 # ─────────────────────────────────────────────────────────
-st.markdown("""
+CSS_STYLE_CONTENT = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;700&display=swap');
 
@@ -320,7 +321,7 @@ section[data-testid="stSidebar"] {
     background-color: rgba(0, 0, 0, 0.12) !important;
 }
 </style>
-""", unsafe_allow_html=True)
+"""
 
 # ─────────────────────────────────────────────────────────
 # 데이터 설정 (서울, 부산, 제주 제외 14개 시도)
@@ -1549,10 +1550,10 @@ def build_age_dataframes():
 
 df_interest, df_visit = build_age_dataframes()
 
-# Safety check to prevent empty data crash
-if df_interest.empty or df_visit.empty:
-    st.error("⚠️ 데이터베이스를 불러오지 못했습니다. 루트 폴더의 `data` 디렉터리에 데이터베이스 파일(*.db)이 있는지 확인해주세요.")
-    st.stop()
+def check_data_safety():
+    if df_interest.empty or df_visit.empty:
+        st.error("⚠️ 데이터베이스를 불러오지 못했습니다. 루트 폴더의 `data` 디렉터리에 데이터베이스 파일(*.db)이 있는지 확인해주세요.")
+        st.stop()
 
 # Plotly 공통 레이아웃 (라이트 테마)
 LAYOUT_BASE = dict(
@@ -1566,1393 +1567,1408 @@ GRID_COLOR = "rgba(0,0,0,0.06)"
 # ─────────────────────────────────────────────────────────
 # 사이드바
 # ─────────────────────────────────────────────────────────
-with st.sidebar:
-    # Trendy symbol logo at top-left
-    st.markdown("""
-    <div style="display:flex; align-items:center; padding:12px 14px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.03); margin-bottom:25px; transition: transform 0.2s ease;">
-        <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:12px; flex-shrink:0;">
-            <!-- Trendy minimalist smiling face pictogram inside a blue circle -->
-            <circle cx="50" cy="50" r="48" fill="url(#smileGrad)" />
-            <circle cx="35" cy="42" r="5" fill="#FFFFFF" />
-            <circle cx="65" cy="42" r="5" fill="#FFFFFF" />
-            <path d="M 32,58 Q 50,72 68,58" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" />
-            <defs>
-                <linearGradient id="smileGrad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#3B82F6" />
-                    <stop offset="100%" stop-color="#1D4ED8" />
-                </linearGradient>
-            </defs>
-        </svg>
-        <div>
-            <h3 style="color:#1E3A8A; font-family:'Outfit',sans-serif; font-weight:800; margin:0; letter-spacing:-0.03em; font-size:1.3rem; line-height:1.15;">Korea City Trip</h3>
-            <span style="color:#64748B; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; display:block; margin-top:2px;">Travel Guide</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    st.markdown("### 🎯 연령대 그룹")
-    st.markdown(f"""
-    <div style="margin-bottom:10px;">
-        <span class="badge-young">{GRP_YOUNG_DETAIL}</span>
-    </div>
-    <div>
-        <span class="badge-old">{GRP_OLD_DETAIL}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    st.markdown("### ℹ️ 분석 제외 지역")
-    st.info("서울특별시, 부산광역시, 제주특별자치도는 분석 대상에서 제외되었습니다.")
-
-    st.markdown("---")
-
-    st.markdown("### 📁 데이터 출처")
-    st.markdown("""
-    <div style="font-size:0.8rem;color:#64748B;line-height:1.7;">
-    · 인스타그램 리뷰/해시태그<br>
-    · 캐치테이블 글로벌 리뷰<br>
-    · 네이버 지도 외국인 리뷰<br>
-    · 구글 트렌드 분석<br>
-    · TripAdvisor 평점/리뷰<br>
-    · Tumblr 포럼 리뷰<br>
-    · KKday 제품 상세/리뷰<br>
-    · GetYourGuide 리뷰<br>
-    · Creatrip 제품 상세/리뷰<br>
-    · 한국관광공사(KTO) 외래객 통계<br>
-    · 기준기간: 2025.06 ~ 2026.05
-    </div>
-    """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────
-# 메인 네비게이션 (구글 크롬 탭 형태)
-# ─────────────────────────────────────────────────────────
-active_page = st.query_params.get("page", "interest")
-
-chrome_tabs_html = f"""
-<div class="chrome-tab-bar">
-    <a href="/?page=interest" target="_self" class="chrome-tab {'active' if active_page == 'interest' else ''}">
-        <span>🔍 외국인 한국 지역별 관심도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=visit" target="_self" class="chrome-tab {'active' if active_page == 'visit' else ''}">
-        <span>🚶 외국인 한국 지역별 방문도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <a href="/?page=vs" target="_self" class="chrome-tab {'active' if active_page == 'vs' else ''}">
-        <span>⚖️ 외국인 관심도 vs 방문도</span>
-        <span class="chrome-tab-close">×</span>
-    </a>
-    <div class="chrome-new-tab">＋</div>
-</div>
-"""
-st.markdown(chrome_tabs_html, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────
-# 헤더
-# ─────────────────────────────────────────────────────────
-st.markdown('<div class="dashboard-sub" style="margin-top: 15px;">연령대별 (청년층 / 중장년층) 지역 관심도 및 방문도 비교 분석 대시보드 | 2025.06 ~ 2026.05 | 서울·부산·제주 제외 14개 시도</div>', unsafe_allow_html=True)
-
-# ═══════════════════════════════════════════════════════════
-# 메뉴 1: 외국인 한국 지역별 관심도
-# ═══════════════════════════════════════════════════════════
-if active_page == "interest":
-
-    st.markdown('<div class="section-title">🔍 외국인 한국 지역별 관심도 — 청년층 vs 중장년층</div>', unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="insight-box">
-    <strong>통합 관심도</strong>란 구글 트렌드, TripAdvisor 평점, Tumblr, KKday, GetYourGuide, Creatrip 평점 지수들의 중간값(Median)으로 결과를 산출한 값입니다.<br>
-    <strong>청년층</strong>: 10대~40대 &nbsp;|&nbsp; <strong>중장년층</strong>: 50대~90대
-    </div>
-    """, unsafe_allow_html=True)
-
-    total_y_i  = df_interest[df_interest["연령그룹"] == GRP_YOUNG_LABEL]["관심도지수"].sum()
-    total_o_i  = df_interest[df_interest["연령그룹"] == GRP_OLD_LABEL]["관심도지수"].sum()
-    top_y_reg  = df_interest[df_interest["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["관심도지수"].sum().idxmax()
-    top_o_reg  = df_interest[df_interest["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["관심도지수"].sum().idxmax()
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">청년층 총 관심도지수</div>
-        <div class="kpi-value">{total_y_i:.1f}</div>
-        <div class="kpi-delta-up">▲ 청년층 지수합</div>
-        </div>""", unsafe_allow_html=True)
-    with k2:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">중장년층 총 관심도지수</div>
-        <div class="kpi-value">{total_o_i:.1f}</div>
-        <div class="kpi-delta-up" style="color:#059669;">▲ 중장년층 지수합</div>
-        </div>""", unsafe_allow_html=True)
-    with k3:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">청년층 관심도 1위 지역</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{top_y_reg}</div>
-        <div class="kpi-delta-up">🏆 청년층 최고 관심</div>
-        </div>""", unsafe_allow_html=True)
-    with k4:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">중장년층 관심도 1위 지역</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{top_o_reg}</div>
-        <div class="kpi-delta-up" style="color:#059669;">🏆 중장년층 최고 관심</div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    tab1, tab2, tab3 = st.tabs(["📊 지역별 연령대 비교", "🌡️ 히트맵 분석", "📈 지역 상세 분석"])
-
-    with tab1:
-        # 연령대별 상위권 관심도 순위 분할
-        rows_y = []
-        rows_o = []
-        for reg in REGIONS:
-            base_int = interest_map.get(reg, 0.0)
-            int_y = base_int * sum(AGE_INTEREST_RATIO[reg][0:4])
-            int_o = base_int * sum(AGE_INTEREST_RATIO[reg][4:7])
-            rows_y.append({"region": reg, "score": round(int_y, 1)})
-            rows_o.append({"region": reg, "score": round(int_o, 1)})
-
-        df_y_int = pd.DataFrame(rows_y).sort_values(by="score", ascending=False).reset_index(drop=True)
-        df_o_int = pd.DataFrame(rows_o).sort_values(by="score", ascending=False).reset_index(drop=True)
-
-        st.markdown("### 🏆 연령대별 통합 관심도 상위권 지역")
-        col_rank_a, col_rank_b = st.columns(2)
-        with col_rank_a:
-            st.markdown(f"""
-            <div class="rank-column-card">
-                <h4 style="margin:0 0 12px 0; color:#1D4ED8; font-weight:700; border-bottom:2px solid #DBEAFE; padding-bottom:6px; font-size:1.05rem;">
-                    🔵 청년층 (10대~40대) Top 3
-                </h4>
-                <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥇</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_int.loc[0, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_int.loc[0, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥈</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_int.loc[1, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_int.loc[1, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥉</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_int.loc[2, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_int.loc[2, 'score']:.1f}</div>
-                    </div>
+def render_korea_trip_data2_dashboard(active_page=None, show_sidebar=True):
+    check_data_safety()
+    st.markdown(CSS_STYLE_CONTENT, unsafe_allow_html=True)
+    if show_sidebar:
+        with st.sidebar:
+            # Trendy symbol logo at top-left
+            st.markdown("""
+            <div style="display:flex; align-items:center; padding:12px 14px; background:#FFFFFF; border:1px solid #E2E8F0; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.03); margin-bottom:25px; transition: transform 0.2s ease;">
+                <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right:12px; flex-shrink:0;">
+                    <!-- Trendy minimalist smiling face pictogram inside a blue circle -->
+                    <circle cx="50" cy="50" r="48" fill="url(#smileGrad)" />
+                    <circle cx="35" cy="42" r="5" fill="#FFFFFF" />
+                    <circle cx="65" cy="42" r="5" fill="#FFFFFF" />
+                    <path d="M 32,58 Q 50,72 68,58" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" />
+                    <defs>
+                        <linearGradient id="smileGrad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#3B82F6" />
+                            <stop offset="100%" stop-color="#1D4ED8" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <div>
+                    <h3 style="color:#1E3A8A; font-family:'Outfit',sans-serif; font-weight:800; margin:0; letter-spacing:-0.03em; font-size:1.3rem; line-height:1.15;">Korea City Trip</h3>
+                    <span style="color:#64748B; font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; display:block; margin-top:2px;">Travel Guide</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        with col_rank_b:
+        
+            st.markdown("---")
+        
+            st.markdown("### 🎯 연령대 그룹")
             st.markdown(f"""
-            <div class="rank-column-card" style="border-top:4px solid #059669;">
-                <h4 style="margin:0 0 12px 0; color:#059669; font-weight:700; border-bottom:2px solid #D1FAE5; padding-bottom:6px; font-size:1.05rem;">
-                    🟢 중장년층 (50대~90대) Top 3
-                </h4>
-                <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥇</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_int.loc[0, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_int.loc[0, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥈</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_int.loc[1, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_int.loc[1, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥉</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_int.loc[2, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_int.loc[2, 'score']:.1f}</div>
-                    </div>
-                </div>
+            <div style="margin-bottom:10px;">
+                <span class="badge-young">{GRP_YOUNG_DETAIL}</span>
+            </div>
+            <div>
+                <span class="badge-old">{GRP_OLD_DETAIL}</span>
             </div>
             """, unsafe_allow_html=True)
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown(f"#### 🔵 청년층 지역별 관심도지수")
-            df_y = df_interest[df_interest["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["관심도지수"].sum().reset_index()
-            df_y = df_y.sort_values("관심도지수", ascending=True)
-            fig = px.bar(
-                df_y, x="관심도지수", y="지역", orientation="h",
-                color="관심도지수",
-                color_continuous_scale=["#DBEAFE", "#60A5FA", "#1D4ED8"],
-                template="plotly_white",
-                labels={"관심도지수": "관심도지수"}
-            )
-            fig.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
-            fig.update_xaxes(gridcolor=GRID_COLOR)
-            fig.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col_b:
-            st.markdown(f"#### 🟢 중장년층 지역별 관심도지수")
-            df_o = df_interest[df_interest["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["관심도지수"].sum().reset_index()
-            df_o = df_o.sort_values("관심도지수", ascending=True)
-            fig2 = px.bar(
-                df_o, x="관심도지수", y="지역", orientation="h",
-                color="관심도지수",
-                color_continuous_scale=["#D1FAE5", "#34D399", "#059669"],
-                template="plotly_white",
-                labels={"관심도지수": "관심도지수"}
-            )
-            fig2.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
-            fig2.update_xaxes(gridcolor=GRID_COLOR)
-            fig2.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig2, use_container_width=True)
-
-        st.markdown("#### ⚡ 청년층 vs 중장년층 지역별 관심도 나란히 비교")
-        df_grp = df_interest.groupby(["지역", "연령그룹"])["관심도지수"].sum().reset_index()
-        order_i = df_interest.groupby("지역")["관심도지수"].sum().sort_values(ascending=False).index.tolist()
-        df_grp["지역"] = pd.Categorical(df_grp["지역"], categories=order_i, ordered=True)
-        df_grp = df_grp.sort_values("지역")
-        fig3 = px.bar(
-            df_grp, x="지역", y="관심도지수", color="연령그룹", barmode="group",
-            color_discrete_map={GRP_YOUNG_LABEL: COLOR_YOUNG, GRP_OLD_LABEL: COLOR_OLD},
-            template="plotly_white",
-            labels={"관심도지수": "관심도지수", "지역": ""}
-        )
-        fig3.update_layout(**LAYOUT_BASE, legend=dict(bgcolor="rgba(0,0,0,0)"), margin=dict(l=0, r=20, t=30, b=80))
-        fig3.update_xaxes(gridcolor=GRID_COLOR, tickangle=-35)
-        fig3.update_yaxes(gridcolor=GRID_COLOR)
-        st.plotly_chart(fig3, use_container_width=True)
-
-        st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [관심도 비교 차트 인사이트]</span> 청년층(10대~40대)은 강원·경기 등 레저/수도권 권역에 60점대 후반의 높은 호기심을 보이며, 중장년층(50대~90대)은 전북·경북 등 전통 문화와 식문화 보유 권역에 상대적으로 높은 선호를 보입니다.</div>""", unsafe_allow_html=True)
-
-    with tab2:
-        st.markdown("#### 🌡️ 연령대 × 지역 관심도 히트맵 (지수 기준)")
-        pivot = df_interest.pivot_table(index="연령대", columns="지역", values="관심도지수", aggfunc="mean")
-        pivot = pivot.reindex(AGE_LABELS)
-        fig_heat = px.imshow(
-            pivot,
-            color_continuous_scale="Blues",
-            aspect="auto",
-            labels=dict(x="지역", y="연령대", color="관심도지수"),
-            template="plotly_white"
-        )
-        fig_heat.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
-        fig_heat.update_xaxes(tickangle=-35)
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-        st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [히트맵 분석 인사이트]</span> 20대·30대 구간에서 강원·경기의 파란색 밀도가 가장 높게 집중되며, 연령대가 높아질수록(50대 이상) 전북·경북 등 내륙 권역의 호기심 비중이 뚜렷하게 상승합니다.</div>""", unsafe_allow_html=True)
-
-    with tab3:
-        st.markdown("#### 📈 지역별 청년층 vs 중장년층 관심도율 비교")
         
-        # Calculate youth vs older interest indices and rates for all regions
-        rows_int_comp = []
-        for reg in REGIONS:
-            base_int = interest_map.get(reg, 0.0)
-            int_y = base_int * sum(AGE_INTEREST_RATIO[reg][0:4])
-            int_o = base_int * sum(AGE_INTEREST_RATIO[reg][4:7])
-            total_int = int_y + int_o if (int_y + int_o) > 0 else 1.0
-            
-            # Rate (%)
-            pct_y = (int_y / total_int) * 100.0
-            pct_o = (int_o / total_int) * 100.0
-            
-            rows_int_comp.append({
-                "지역": reg,
-                "청년층 관심도율 (%)": round(pct_y, 1),
-                "중장년층 관심도율 (%)": round(pct_o, 1),
-                "청년층 관심지수": round(int_y, 1),
-                "중장년층 관심지수": round(int_o, 1)
-            })
-            
-        df_int_comp = pd.DataFrame(rows_int_comp)
+            st.markdown("---")
         
-        # Melt for plotting
-        df_int_melt = df_int_comp.melt(
-            id_vars=["지역", "청년층 관심지수", "중장년층 관심지수"],
-            value_vars=["청년층 관심도율 (%)", "중장년층 관심도율 (%)"],
-            var_name="그룹",
-            value_name="관심도율 (%)"
-        )
+            st.markdown("### ℹ️ 분석 제외 지역")
+            st.info("서울특별시, 부산광역시, 제주특별자치도는 분석 대상에서 제외되었습니다.")
         
-        fig_int_comp = px.bar(
-            df_int_melt,
-            x="지역",
-            y="관심도율 (%)",
-            color="그룹",
-            barmode="group",
-            color_discrete_map={"청년층 관심도율 (%)": "#3B82F6", "중장년층 관심도율 (%)": "#93C5FD"},
-            hover_data=["청년층 관심지수", "중장년층 관심지수"],
-            title="📊 지역별 청년층 vs 중장년층 관심도율 (%) 비교 (막대를 클릭하면 상세 분석으로 연동됩니다)",
-            labels={"관심도율 (%)": "관심도율 (%)", "지역": "지역", "그룹": "연령그룹"}
-        )
-        fig_int_comp.update_layout(
-            **LAYOUT_BASE,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis_title="지역",
-            yaxis_title="관심도율 (%)",
-            margin=dict(l=10, r=10, t=50, b=40)
-        )
-        chart_event_int = st.plotly_chart(fig_int_comp, use_container_width=True, on_select="rerun")
+            st.markdown("---")
         
-        # 바그래프 클릭 이벤트 연동
-        if chart_event_int and chart_event_int.get("selection", {}).get("points"):
-            pt = chart_event_int["selection"]["points"][0]
-            c_num = pt.get("curve_number", pt.get("curveNumber", 0))
-            clicked_group = "청년층" if c_num == 0 else "중장년층"
-            needs_rerun = False
-            if "x" in pt and pt["x"] in REGIONS:
-                clicked_region = pt["x"]
-                if st.session_state.get("int_radar") != clicked_region:
-                    st.session_state["int_radar"] = clicked_region
-                    needs_rerun = True
-            if st.session_state.get("int_age_detail") != clicked_group:
-                st.session_state["int_age_detail"] = clicked_group
-                needs_rerun = True
-            if needs_rerun:
-                st.rerun()
+            st.markdown("### 📁 데이터 출처")
+            st.markdown("""
+            <div style="font-size:0.8rem;color:#64748B;line-height:1.7;">
+            · 인스타그램 리뷰/해시태그<br>
+            · 캐치테이블 글로벌 리뷰<br>
+            · 네이버 지도 외국인 리뷰<br>
+            · 구글 트렌드 분석<br>
+            · TripAdvisor 평점/리뷰<br>
+            · Tumblr 포럼 리뷰<br>
+            · KKday 제품 상세/리뷰<br>
+            · GetYourGuide 리뷰<br>
+            · Creatrip 제품 상세/리뷰<br>
+            · 한국관광공사(KTO) 외래객 통계<br>
+            · 기준기간: 2025.06 ~ 2026.05
+            </div>
+            """, unsafe_allow_html=True)
         
-        st.markdown("---")
-        st.markdown("#### 🔍 지역 및 연령층 선택 및 세부 시/군/구별 인기 관심도 분석")
-        
-        col_sel1, col_sel2 = st.columns(2)
-        with col_sel1:
-            sel_region_int = st.selectbox("상세 분석할 지역 선택", REGIONS, key="int_radar")
-        with col_sel2:
-            sel_age_int = st.selectbox("분석할 연령층 선택", ["전체", "청년층", "중장년층"], key="int_age_detail")
-        
-        st.markdown(f"##### 📍 {sel_region_int} 내 {sel_age_int} 인기 관심 지역 순위")
-        df_sigun = get_sigun_interest(sel_region_int, sel_age_int)
-        if not df_sigun.empty:
-            # Plotly bar chart for si/gun
-            fig_sigun = px.bar(
-                df_sigun,
-                x="city",
-                y="interest_score",
-                color="interest_score",
-                color_continuous_scale="Blues",
-                text_auto=".1f",
-                title=f"{sel_region_int} 시/군/구별 {sel_age_int} 관심도 지수 (100점 만점)",
-                labels={"interest_score": "관심도 지수", "city": "시/군/구", "avg_rating": "평균 평점", "review_count": "리뷰 빈도 수"},
-                hover_data=["avg_rating", "review_count"]
-            )
-            fig_sigun.update_layout(
-                **LAYOUT_BASE,
-                coloraxis_showscale=False,
-                xaxis_title="시/군/구",
-                yaxis_title="관심도 지수 (100점 만점)",
-                margin=dict(l=20, r=20, t=50, b=50)
-            )
-            st.plotly_chart(fig_sigun, use_container_width=True)
-            
-            # Table of si/gun interest
-            st.markdown(f"##### 🔢 {sel_region_int} 시/군/구별 세부 수치")
-            df_tbl_sigun = df_sigun.copy()
-            df_tbl_sigun.columns = ["시/군/구", "관심도 지수 (100점 만점)", "리뷰 빈도 수", "평균 평점"]
-            st.dataframe(df_tbl_sigun, use_container_width=True, hide_index=True)
-            
-            # Fetch keywords dynamically
-            city_top_kws = get_regional_visit_keywords(sel_region_int, sel_age_int)
-            
-            # Build the detailed insights HTML
-            insights_html = f"""
-<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(59,130,246,0.06);">
-<h4 style="margin:0 0 16px 0; color:#1D4ED8; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
-<span>📍 {sel_region_int} 시/군/구 단위 {sel_age_int} 심층 관심도 분석 및 소셜 트렌드</span>
-</h4>
-<p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
-선택하신 <strong>{sel_region_int}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
-외국인들의 관심 및 소셜 언급도가 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
-</p>
-"""
-            
-            # Display top 3 cities
-            for idx, row in df_sigun.head(3).reset_index(drop=True).iterrows():
-                city_name = row['city']
-                score = row['interest_score']
-                cnt = int(row['review_count'])
-                avg_r = float(row['avg_rating'])
-                kws_list = city_top_kws.get(city_name, ["관광", "korea", "travel"])
-                kws_str = ", ".join([f"<span style='background:#E8F0FE; color:#1A73E8; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.8rem; font-weight:600;'>#{k}</span>" for k in kws_list])
-                
-                badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
-                
-                insights_html += f"""
-<div style="background:#FFFFFF; border:1px solid #E8F0FE; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-<strong style="color:#1D4ED8; font-size:1.05rem;">{badge_icon} {city_name}</strong>
-<span style="font-size:0.85rem; background:#EFF6FF; color:#2563EB; padding:2px 8px; border-radius:12px; font-weight:600;">관심도지수: {score:.1f}점</span>
-</div>
-<div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
-• <strong>관심 통계:</strong> 소셜 언급 및 상품 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
-• <strong>주요 탐색 내용 & 연관 해시태그:</strong> {kws_str}
-</div>
-</div>
-"""
-                
-            insights_html += "</div>"
-            st.markdown(insights_html, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ 선택한 지역의 세부 시/군/구 데이터를 수집할 수 없습니다.")
-
-
-
-
-# ═══════════════════════════════════════════════════════════
-# 메뉴 2: 외국인 한국 지역별 방문도
-# ═══════════════════════════════════════════════════════════
-elif active_page == "visit":
-
-    st.markdown('<div class="section-title">🚶 외국인 한국 지역별 방문도 — 청년층 vs 중장년층</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="insight-box">
-    <strong>통합 방문도</strong>는 KTO 공식 외래객 방문 통계, TripAdvisor 리뷰 수, Tumblr 후기 수, KKday 리뷰 수, GetYourGuide 리뷰 수, Creatrip 리뷰 수 지수들의 중간값(Median)으로 결과를 산출한 값입니다.<br>
-    <strong>청년층</strong>: 10대~40대 &nbsp;|&nbsp; <strong>중장년층</strong>: 50대~90대
+        # ─────────────────────────────────────────────────────────
+        # 메인 네비게이션 (구글 크롬 탭 형태)
+        # ─────────────────────────────────────────────────────────
+    if active_page is None:
+        active_page = st.query_params.get("page", "interest")
+        show_chrome_tabs = True
+    else:
+        show_chrome_tabs = False
+    
+    chrome_tabs_html = f"""
+    <div class="chrome-tab-bar">
+        <a href="/?page=interest" target="_self" class="chrome-tab {'active' if active_page == 'interest' else ''}">
+            <span>🔍 외국인 한국 지역별 관심도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <a href="/?page=visit" target="_self" class="chrome-tab {'active' if active_page == 'visit' else ''}">
+            <span>🚶 외국인 한국 지역별 방문도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <a href="/?page=vs" target="_self" class="chrome-tab {'active' if active_page == 'vs' else ''}">
+            <span>⚖️ 외국인 관심도 vs 방문도</span>
+            <span class="chrome-tab-close">×</span>
+        </a>
+        <div class="chrome-new-tab">＋</div>
     </div>
-    """, unsafe_allow_html=True)
-
-    total_y_v = df_visit[df_visit["연령그룹"] == GRP_YOUNG_LABEL]["방문도지수"].sum()
-    total_o_v = df_visit[df_visit["연령그룹"] == GRP_OLD_LABEL]["방문도지수"].sum()
-    top_y_vr  = df_visit[df_visit["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["방문도지수"].sum().idxmax()
-    top_o_vr  = df_visit[df_visit["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["방문도지수"].sum().idxmax()
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">청년층 총 방문도지수</div>
-        <div class="kpi-value">{total_y_v:.1f}</div>
-        <div class="kpi-delta-up">▲ 청년층 지수합</div>
-        </div>""", unsafe_allow_html=True)
-    with k2:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">중장년층 총 방문도지수</div>
-        <div class="kpi-value">{total_o_v:.1f}</div>
-        <div class="kpi-delta-up" style="color:#059669;">▲ 중장년층 지수합</div>
-        </div>""", unsafe_allow_html=True)
-    with k3:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">청년층 방문도 1위 지역</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{top_y_vr}</div>
-        <div class="kpi-delta-up">🏆 청년층 최다 방문</div>
-        </div>""", unsafe_allow_html=True)
-    with k4:
-        st.markdown(f"""<div class="kpi-card">
-        <div class="kpi-label">중장년층 방문도 1위 지역</div>
-        <div class="kpi-value" style="font-size:1.3rem;">{top_o_vr}</div>
-        <div class="kpi-delta-up" style="color:#059669;">🏆 중장년층 최다 방문</div>
-        </div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    tab1, tab2, tab3 = st.tabs(["📊 지역별 연령대 비교", "🌡️ 히트맵 분석", "📈 지역 상세 분석"])
-
-    with tab1:
-        # 연령대별 상위권 방문도 순위 분할 (청년/중장년 특화 베이스 기준)
-        rows_y_vis = []
-        rows_o_vis = []
-        for reg in REGIONS:
-            vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
-            vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
-            rows_y_vis.append({"region": reg, "score": round(vis_y, 1)})
-            rows_o_vis.append({"region": reg, "score": round(vis_o, 1)})
-
-        df_y_vis = pd.DataFrame(rows_y_vis).sort_values(by="score", ascending=False).reset_index(drop=True)
-        df_o_vis = pd.DataFrame(rows_o_vis).sort_values(by="score", ascending=False).reset_index(drop=True)
-
-        st.markdown("### 🏆 연령대별 통합 방문도 상위권 지역")
-        col_rank_a, col_rank_b = st.columns(2)
-        with col_rank_a:
-            st.markdown(f"""
-            <div class="rank-column-card">
-                <h4 style="margin:0 0 12px 0; color:#1D4ED8; font-weight:700; border-bottom:2px solid #DBEAFE; padding-bottom:6px; font-size:1.05rem;">
-                    🔵 청년층 (10대~40대) Top 3
-                </h4>
-                <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥇</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_vis.loc[0, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_vis.loc[0, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥈</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_vis.loc[1, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_vis.loc[1, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥉</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_vis.loc[2, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_vis.loc[2, 'score']:.1f}</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col_rank_b:
-            st.markdown(f"""
-            <div class="rank-column-card" style="border-top:4px solid #059669;">
-                <h4 style="margin:0 0 12px 0; color:#059669; font-weight:700; border-bottom:2px solid #D1FAE5; padding-bottom:6px; font-size:1.05rem;">
-                    🟢 중장년층 (50대~90대) Top 3
-                </h4>
-                <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥇</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_vis.loc[0, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_vis.loc[0, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥈</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_vis.loc[1, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_vis.loc[1, 'score']:.1f}</div>
-                    </div>
-                    <div class="top-rank-item">
-                        <span style="font-size:1.3rem;">🥉</span>
-                        <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_vis.loc[2, 'region']}</div>
-                        <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_vis.loc[2, 'score']:.1f}</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("#### 🔵 청년층 지역별 방문도지수")
-            df_yv = df_visit[df_visit["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["방문도지수"].sum().reset_index()
-            df_yv = df_yv.sort_values("방문도지수", ascending=True)
-            fig = px.bar(
-                df_yv, x="방문도지수", y="지역", orientation="h",
-                color="방문도지수",
-                color_continuous_scale=["#DBEAFE", "#60A5FA", "#1D4ED8"],
-                template="plotly_white",
-                labels={"방문도지수": "방문도지수"}
-            )
-            fig.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
-            fig.update_xaxes(gridcolor=GRID_COLOR)
-            fig.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig, use_container_width=True)
-
-        with col_b:
-            st.markdown("#### 🟢 중장년층 지역별 방문도지수")
-            df_ov = df_visit[df_visit["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["방문도지수"].sum().reset_index()
-            df_ov = df_ov.sort_values("방문도지수", ascending=True)
-            fig2 = px.bar(
-                df_ov, x="방문도지수", y="지역", orientation="h",
-                color="방문도지수",
-                color_continuous_scale=["#D1FAE5", "#34D399", "#059669"],
-                template="plotly_white",
-                labels={"방문도지수": "방문도지수"}
-            )
-            fig2.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
-            fig2.update_xaxes(gridcolor=GRID_COLOR)
-            fig2.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig2, use_container_width=True)
-
-        st.markdown("#### ⚡ 청년층 vs 중장년층 지역별 방문도 나란히 비교")
-        order_v = df_visit.groupby("지역")["방문도지수"].sum().sort_values(ascending=False).index.tolist()
-        df_grpv = df_visit.groupby(["지역", "연령그룹"])["방문도지수"].sum().reset_index()
-        df_grpv["지역"] = pd.Categorical(df_grpv["지역"], categories=order_v, ordered=True)
-        df_grpv = df_grpv.sort_values("지역")
-        fig3 = px.bar(
-            df_grpv, x="지역", y="방문도지수", color="연령그룹", barmode="group",
-            color_discrete_map={GRP_YOUNG_LABEL: COLOR_YOUNG, GRP_OLD_LABEL: COLOR_OLD},
-            template="plotly_white",
-            labels={"방문도지수": "방문도지수", "지역": ""}
-        )
-        fig3.update_layout(**LAYOUT_BASE, legend=dict(bgcolor="rgba(0,0,0,0)"), margin=dict(l=0, r=20, t=30, b=80))
-        fig3.update_xaxes(gridcolor=GRID_COLOR, tickangle=-35)
-        fig3.update_yaxes(gridcolor=GRID_COLOR)
-        st.plotly_chart(fig3, use_container_width=True)
-
-        st.markdown("#### 🥧 지역별 연령대 구성 비율 (스택형)")
-        df_stack = df_visit.groupby(["지역", "연령대"])["방문도지수"].sum().reset_index()
-        df_stack["지역"] = pd.Categorical(df_stack["지역"], categories=order_v, ordered=True)
-        df_stack = df_stack.sort_values("지역")
-        fig_st = px.bar(
-            df_stack, x="지역", y="방문도지수", color="연령대", barmode="stack",
-            color_discrete_map=AGE_COLORS, template="plotly_white",
-            labels={"방문도지수": "방문도지수", "지역": ""}
-        )
-        fig_st.update_layout(
-            **LAYOUT_BASE,
-            legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="bottom", y=1.02),
-            margin=dict(l=0, r=20, t=50, b=80)
-        )
-        fig_st.update_xaxes(tickangle=-35, gridcolor=GRID_COLOR)
-        fig_st.update_yaxes(gridcolor=GRID_COLOR)
-        st.plotly_chart(fig_st, use_container_width=True)
-
-        st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [방문도 비교 차트 인사이트]</span> 청년층 최다 방문 권역 1위는 경기도(59.0점), 2위 인천(49.6점), 3위 강원(46.6점)이며, 중장년층 1위는 전북(14.0점), 2위 경북(13.2점), 3위 전남(11.3점)으로 나타나 세대별 방문 거점의 명확한 지리적 차별화를 입증합니다.</div>""", unsafe_allow_html=True)
-
-    with tab2:
-        st.markdown("#### 🌡️ 연령대 × 지역 방문도 히트맵 (지수 기준)")
-        pivot_v = df_visit.pivot_table(index="연령대", columns="지역", values="방문도지수", aggfunc="mean")
-        pivot_v = pivot_v.reindex(AGE_LABELS)
-        fig_heat = px.imshow(
-            pivot_v, color_continuous_scale="Greens",
-            aspect="auto", template="plotly_white",
-            labels=dict(x="지역", y="연령대", color="방문도지수")
-        )
-        fig_heat.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
-        fig_heat.update_xaxes(tickangle=-35)
-        st.plotly_chart(fig_heat, use_container_width=True)
-
-        st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [히트맵 분석 인사이트]</span> 청년층은 수도권 및 동해안 리조트 벨트에 높은 밀도의 방문 패턴을 보이는 반면, 중장년층은 호남·영남 내륙 역사 및 미식 거점 도시들에 체류형 방문이 분산되는 경향을 나타냅니다.</div>""", unsafe_allow_html=True)
-
-    with tab3:
-        st.markdown("#### 📈 지역별 청년층 vs 중장년층 방문도율 비교")
-        
-        # Calculate youth vs older visit indices and rates for all regions
-        rows_vis_comp = []
-        for reg in REGIONS:
-            vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
-            vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
-            total_vis = vis_y + vis_o if (vis_y + vis_o) > 0 else 1.0
-            
-            # Rate (%)
-            pct_y = (vis_y / total_vis) * 100.0
-            pct_o = (vis_o / total_vis) * 100.0
-            
-            rows_vis_comp.append({
-                "지역": reg,
-                "청년층 방문도율 (%)": round(pct_y, 1),
-                "중장년층 방문도율 (%)": round(pct_o, 1),
-                "청년층 방문지수": round(vis_y, 1),
-                "중장년층 방문지수": round(vis_o, 1)
-            })
-            
-        df_vis_comp = pd.DataFrame(rows_vis_comp)
-        
-        # Melt for plotting
-        df_vis_melt = df_vis_comp.melt(
-            id_vars=["지역", "청년층 방문지수", "중장년층 방문지수"],
-            value_vars=["청년층 방문도율 (%)", "중장년층 방문도율 (%)"],
-            var_name="그룹",
-            value_name="방문도율 (%)"
-        )
-        
-        fig_vis_comp = px.bar(
-            df_vis_melt,
-            x="지역",
-            y="방문도율 (%)",
-            color="그룹",
-            barmode="group",
-            color_discrete_map={"청년층 방문도율 (%)": "#10B981", "중장년층 방문도율 (%)": "#A7F3D0"},
-            hover_data=["청년층 방문지수", "중장년층 방문지수"],
-            title="📊 지역별 청년층 vs 중장년층 방문도율 (%) 비교 (막대를 클릭하면 상세 분석으로 연동됩니다)",
-            labels={"방문도율 (%)": "방문도율 (%)", "지역": "지역", "그룹": "연령그룹"}
-        )
-        fig_vis_comp.update_layout(
-            **LAYOUT_BASE,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis_title="지역",
-            yaxis_title="방문도율 (%)",
-            margin=dict(l=10, r=10, t=50, b=40)
-        )
-        chart_event = st.plotly_chart(fig_vis_comp, use_container_width=True, on_select="rerun")
-        
-        # 바그래프 클릭 이벤트 연동
-        if chart_event and chart_event.get("selection", {}).get("points"):
-            pt = chart_event["selection"]["points"][0]
-            c_num = pt.get("curve_number", pt.get("curveNumber", 0))
-            clicked_group = "청년층" if c_num == 0 else "중장년층"
-            needs_rerun = False
-            if "x" in pt and pt["x"] in REGIONS:
-                clicked_region = pt["x"]
-                if st.session_state.get("vis_detail") != clicked_region:
-                    st.session_state["vis_detail"] = clicked_region
-                    needs_rerun = True
-            if st.session_state.get("vis_age_detail") != clicked_group:
-                st.session_state["vis_age_detail"] = clicked_group
-                needs_rerun = True
-            if needs_rerun:
-                st.rerun()
-        
-        st.markdown("---")
-        st.markdown("#### 🔍 지역 및 연령층 선택 및 세부 시/군/구별 인기 지역 분석")
-        
-        col_sel1, col_sel2 = st.columns(2)
-        with col_sel1:
-            sel_region_vis = st.selectbox("상세 분석할 지역 선택", REGIONS, key="vis_detail")
-        with col_sel2:
-            sel_age_vis = st.selectbox("분석할 연령층 선택", ["전체", "청년층", "중장년층"], key="vis_age_detail")
-        
-        st.markdown(f"##### 📍 {sel_region_vis} 내 {sel_age_vis} 인기 시/군/구 순위")
-        df_sigun_v = get_sigun_visit(sel_region_vis, sel_age_vis)
-        if not df_sigun_v.empty:
-            # Plotly bar chart for si/gun
-            fig_sigun_v = px.bar(
-                df_sigun_v,
-                x="city",
-                y="visit_score",
-                color="visit_score",
-                color_continuous_scale="Greens",
-                text_auto=".1f",
-                title=f"{sel_region_vis} 시/군/구별 {sel_age_vis} 방문 지수 (100점 만점)",
-                labels={"visit_score": "방문 지수", "city": "시/군/구", "review_count": "리뷰 빈도 수", "avg_rating": "평균 평점"},
-                hover_data=["review_count", "avg_rating"]
-            )
-            fig_sigun_v.update_layout(
-                **LAYOUT_BASE,
-                coloraxis_showscale=False,
-                xaxis_title="시/군/구",
-                yaxis_title="방문 지수 (100점 만점)",
-                margin=dict(l=20, r=20, t=50, b=50)
-            )
-            st.plotly_chart(fig_sigun_v, use_container_width=True)
-            
-            # Table of si/gun visit
-            st.markdown(f"##### 🔢 {sel_region_vis} 내 {sel_age_vis} 시/군/구별 세부 수치")
-            df_tbl_sigun_v = df_sigun_v[["city", "visit_score", "review_count"]].copy()
-            df_tbl_sigun_v.columns = ["시/군/구", "방문 지수 (100점 만점)", "실제 리뷰/게시물 수"]
-            st.dataframe(df_tbl_sigun_v, use_container_width=True, hide_index=True)
-            
-            # Fetch keywords dynamically
-            city_top_kws = get_regional_visit_keywords(sel_region_vis, sel_age_vis)
-            
-            # Build the detailed insights HTML
-            insights_html = f"""
-<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(16,185,129,0.06);">
-<h4 style="margin:0 0 16px 0; color:#065F46; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
-<span>📍 {sel_region_vis} 시/군/구 단위 {sel_age_vis} 심층 방문 분석 및 소셜 트렌드</span>
-</h4>
-<p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
-선택하신 <strong>{sel_region_vis}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
-외국인 방문 유입량이 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
-</p>
-"""
-            
-            # Display top 3 cities
-            for idx, row in df_sigun_v.head(3).reset_index(drop=True).iterrows():
-                city_name = row['city']
-                score = row['visit_score']
-                cnt = int(row['review_count'])
-                avg_r = float(row['avg_rating'])
-                kws_list = city_top_kws.get(city_name, ["관광", "korea", "travel"])
-                kws_str = ", ".join([f"<span style='background:#E6F4EA; color:#137333; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.8rem; font-weight:600;'>#{k}</span>" for k in kws_list])
-                
-                badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
-                
-                insights_html += f"""
-<div style="background:#FFFFFF; border:1px solid #E6F4EA; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-<strong style="color:#065F46; font-size:1.05rem;">{badge_icon} {city_name}</strong>
-<span style="font-size:0.85rem; background:#ECFDF5; color:#047857; padding:2px 8px; border-radius:12px; font-weight:600;">방문지수: {score:.1f}점</span>
-</div>
-<div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
-• <strong>방문 통계:</strong> 소셜 버즈 및 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
-• <strong>주요 리뷰 내용 & 연관 해시태그:</strong> {kws_str}
-</div>
-</div>
-"""
-                
-            insights_html += "</div>"
-            st.markdown(insights_html, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ 선택한 지역의 세부 시/군/구 데이터를 수집할 수 없습니다.")
-
-
-
-
-elif active_page == "vs":
-
-    st.markdown('<div class="section-title">⚖️ 외국인 관심도 vs 방문도 — 청년층 vs 중장년층 종합 비교</div>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="insight-box">
-    <strong>관심도 vs 방문도</strong>는 검색 탐색 행동(관심)과 실제 방문 행동의 차이를 분석합니다.
-    두 지표의 <strong>괴리(Gap)</strong>가 클수록 관심은 있지만 방문으로 이어지지 않거나,
-    반대로 관심 대비 방문이 집중되는 핵심 관광지임을 의미합니다.<br>
-    <strong>청년층</strong>: 10대~40대 &nbsp;|&nbsp; <strong>중장년층</strong>: 50대~90대
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 전처리
-    df_int_grp = df_interest.groupby(["지역", "연령그룹"])["관심도지수"].sum().reset_index()
-    df_vis_grp = df_visit.groupby(["지역", "연령그룹"])["방문도지수"].sum().reset_index()
-    df_merged  = pd.merge(df_int_grp, df_vis_grp, on=["지역", "연령그룹"])
-
-    for grp in [GRP_YOUNG_LABEL, GRP_OLD_LABEL]:
-        mask = df_merged["연령그룹"] == grp
-        max_i = df_merged.loc[mask, "관심도지수"].max()
-        max_v = df_merged.loc[mask, "방문도지수"].max()
-        df_merged.loc[mask, "관심도지수"] = (df_merged.loc[mask, "관심도지수"] / max_i * 100).round(1)
-        df_merged.loc[mask, "방문도지수"] = (df_merged.loc[mask, "방문도지수"]           / max_v * 100).round(1)
-
-    df_merged["전환효율"] = (df_merged["방문도지수"] / df_merged["관심도지수"]).round(3)
-    df_merged["Gap"]      = (df_merged["관심도지수"] - df_merged["방문도지수"]).round(1)
-
-    df_y_m = df_merged[df_merged["연령그룹"] == GRP_YOUNG_LABEL]
-    df_o_m = df_merged[df_merged["연령그룹"] == GRP_OLD_LABEL]
-
-    # 청년층 및 중장년층 관심도 Top 3 / 방문도 Top 3 산출 (원본 통합 중앙값 지수 기준)
-    rows_y_i, rows_o_i = [], []
-    rows_y_v, rows_o_v = [], []
-    for reg in REGIONS:
-        base_i = interest_map.get(reg, 0.0)
-        int_y = base_i * sum(AGE_INTEREST_RATIO[reg][0:4])
-        int_o = base_i * sum(AGE_INTEREST_RATIO[reg][4:7])
-        rows_y_i.append({"region": reg, "score": round(int_y, 1)})
-        rows_o_i.append({"region": reg, "score": round(int_o, 1)})
-
-        vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
-        vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
-        rows_y_v.append({"region": reg, "score": round(vis_y, 1)})
-        rows_o_v.append({"region": reg, "score": round(vis_o, 1)})
-
-    top3_y_int = pd.DataFrame(rows_y_i).sort_values("score", ascending=False).reset_index(drop=True)
-    top3_o_int = pd.DataFrame(rows_o_i).sort_values("score", ascending=False).reset_index(drop=True)
-    top3_y_vis = pd.DataFrame(rows_y_v).sort_values("score", ascending=False).reset_index(drop=True)
-    top3_o_vis = pd.DataFrame(rows_o_v).sort_values("score", ascending=False).reset_index(drop=True)
-
-    df_y_unified = pd.DataFrame({"region": [r["region"] for r in rows_y_i], "int_score": [r["score"] for r in rows_y_i], "vis_score": [r["score"] for r in rows_y_v]})
-    df_y_unified["int_rank"] = df_y_unified["int_score"].rank(ascending=False, method='min').astype(int)
-    df_y_unified["vis_rank"] = df_y_unified["vis_score"].rank(ascending=False, method='min').astype(int)
-    df_y_unified["gap"] = df_y_unified["int_score"] - df_y_unified["vis_score"]
-    df_y_unified["eff"] = np.where(df_y_unified["int_score"] > 0, (df_y_unified["vis_score"] / df_y_unified["int_score"]) * 100, 0)
-    y_gap_top = df_y_unified[df_y_unified['int_rank'] <= 3].sort_values(by="gap", ascending=False).iloc[0]
-    y_eff_top = df_y_unified[df_y_unified['vis_rank'] <= 3].sort_values(by="eff", ascending=False).iloc[0]
-
-    df_o_unified = pd.DataFrame({"region": [r["region"] for r in rows_o_i], "int_score": [r["score"] for r in rows_o_i], "vis_score": [r["score"] for r in rows_o_v]})
-    df_o_unified["int_rank"] = df_o_unified["int_score"].rank(ascending=False, method='min').astype(int)
-    df_o_unified["vis_rank"] = df_o_unified["vis_score"].rank(ascending=False, method='min').astype(int)
-    df_o_unified["gap"] = df_o_unified["int_score"] - df_o_unified["vis_score"]
-    df_o_unified["eff"] = np.where(df_o_unified["int_score"] > 0, (df_o_unified["vis_score"] / df_o_unified["int_score"]) * 100, 0)
-    o_gap_top = df_o_unified[df_o_unified['int_rank'] <= 3].sort_values(by="gap", ascending=False).iloc[0]
-    o_eff_top = df_o_unified[df_o_unified['vis_rank'] <= 3].sort_values(by="eff", ascending=False).iloc[0]
-
-    st.markdown("### 🏆 연령대별 관심도 vs 방문도 Top 3 종합 비교")
-    col_top_y, col_top_o = st.columns(2)
-    with col_top_y:
+    """
+    if show_chrome_tabs:
+        st.markdown(chrome_tabs_html, unsafe_allow_html=True)
+    
+    # ─────────────────────────────────────────────────────────
+    # 헤더
+    # ─────────────────────────────────────────────────────────
+    st.markdown('<div class="dashboard-sub" style="margin-top: 15px;">연령대별 (청년층 / 중장년층) 지역 관심도 및 방문도 비교 분석 대시보드 | 2025.06 ~ 2026.05 | 서울·부산·제주 제외 14개 시도</div>', unsafe_allow_html=True)
+    
+    # ═══════════════════════════════════════════════════════════
+    # 메뉴 1: 외국인 한국 지역별 관심도
+    # ═══════════════════════════════════════════════════════════
+    if active_page == "interest":
+    
+        st.markdown('<div class="section-title">🔍 외국인 한국 지역별 관심도 — 청년층 vs 중장년층</div>', unsafe_allow_html=True)
         st.markdown(f"""
-        <div class="rank-column-card" style="border-top:4px solid #3B82F6; background:#F8FAFC; padding:16px; border-radius:12px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-            <h4 style="margin:0 0 14px 0; color:#1D4ED8; font-weight:700; border-bottom:2px solid #DBEAFE; padding-bottom:8px; font-size:1.1rem; display:flex; align-items:center; justify-content:space-between;">
-                <span>🔵 청년층 (10대~40대)</span>
-                <span style="font-size:0.8rem; background:#EFF6FF; color:#2563EB; padding:3px 8px; border-radius:12px; font-weight:600;">Top 3 비교</span>
-            </h4>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
-                    <div style="font-size:0.85rem; font-weight:700; color:#64748B; margin-bottom:8px; text-align:center;">🔥 관심도 Top 3</div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥇</span>
-                        <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_y_int.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_int.loc[0, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥈</span>
-                        <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_y_int.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_int.loc[1, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <span style="font-size:1.1rem;">🥉</span>
-                        <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_y_int.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_int.loc[2, 'score']:.1f})</span></div>
-                    </div>
-                </div>
-                <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
-                    <div style="font-size:0.85rem; font-weight:700; color:#2563EB; margin-bottom:8px; text-align:center;">✈️ 방문도 Top 3</div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥇</span>
-                        <div><strong style="color:#1D4ED8; font-size:0.95rem;">{top3_y_vis.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_vis.loc[0, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥈</span>
-                        <div><strong style="color:#1D4ED8; font-size:0.95rem;">{top3_y_vis.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_vis.loc[1, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <span style="font-size:1.1rem;">🥉</span>
-                        <div><strong style="color:#1D4ED8; font-size:0.95rem;">{top3_y_vis.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_vis.loc[2, 'score']:.1f})</span></div>
-                    </div>
-                </div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
-                <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
-                    <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 청년층 고관심 &gt; 저방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">{y_gap_top['region']}</div>
-                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 {y_gap_top['int_rank']}위 {y_gap_top['int_score']:.1f} → 방문 {y_gap_top['vis_rank']}위 {y_gap_top['vis_score']:.1f}<br><strong>(잠재 미전환 1위)</strong></div>
-                </div>
-                <div style="background:#FFFFFF; border:1px solid #BFDBFE; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(37,99,235,0.05);">
-                    <div style="font-size:0.78rem; font-weight:700; color:#2563EB; margin-bottom:4px;">🎯 청년층 저관심 &lt; 고방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#1E40AF;">{y_eff_top['region']}</div>
-                    <div style="font-size:0.75rem; color:#1D4ED8; margin-top:4px;">관심 {y_eff_top['int_rank']}위 {y_eff_top['int_score']:.1f} → 방문 {y_eff_top['vis_rank']}위 {y_eff_top['vis_score']:.1f}<br><strong>(방문전환율 {y_eff_top['eff']:.1f}%)</strong></div>
-                </div>
-            </div>
-            <div style="padding:10px 14px; background:#EFF6FF; border-radius:8px; font-size:0.83rem; color:#1E3A8A; line-height:1.45; border:1px solid #DBEAFE;">
-                💡 <strong>청년층 종합 결론</strong>: <strong>{y_gap_top['region']}</strong>는 청년층 온라인 관심도 {y_gap_top['int_rank']}위({y_gap_top['int_score']:.1f})이나 실제 방문에서는 {y_gap_top['vis_rank']}위에 머물러 미전환 갭이 가장 큽니다. 반면 <strong>{y_eff_top['region']}</strong>는 뛰어난 교통 접근성과 인프라로 관심 대비 방문 전환율 최고효율({y_eff_top['eff']:.1f}%) 및 방문 {y_eff_top['vis_rank']}위를 달성했습니다.
-            </div>
+        <div class="insight-box">
+        <strong>통합 관심도</strong>란 구글 트렌드, TripAdvisor 평점, Tumblr, KKday, GetYourGuide, Creatrip 평점 지수들의 중간값(Median)으로 결과를 산출한 값입니다.<br>
+        <strong>청년층</strong>: 10대~40대 &nbsp;|&nbsp; <strong>중장년층</strong>: 50대~90대
         </div>
         """, unsafe_allow_html=True)
-    with col_top_o:
-        st.markdown(f"""
-        <div class="rank-column-card" style="border-top:4px solid #059669; background:#F8FAFC; padding:16px; border-radius:12px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-            <h4 style="margin:0 0 14px 0; color:#059669; font-weight:700; border-bottom:2px solid #D1FAE5; padding-bottom:8px; font-size:1.1rem; display:flex; align-items:center; justify-content:space-between;">
-                <span>🟢 중장년층 (50대~90대)</span>
-                <span style="font-size:0.8rem; background:#ECFDF5; color:#059669; padding:3px 8px; border-radius:12px; font-weight:600;">Top 3 비교</span>
-            </h4>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
-                    <div style="font-size:0.85rem; font-weight:700; color:#64748B; margin-bottom:8px; text-align:center;">🔥 관심도 Top 3</div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥇</span>
-                        <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_o_int.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_int.loc[0, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥈</span>
-                        <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_o_int.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_int.loc[1, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <span style="font-size:1.1rem;">🥉</span>
-                        <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_o_int.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_int.loc[2, 'score']:.1f})</span></div>
+    
+        total_y_i  = df_interest[df_interest["연령그룹"] == GRP_YOUNG_LABEL]["관심도지수"].sum()
+        total_o_i  = df_interest[df_interest["연령그룹"] == GRP_OLD_LABEL]["관심도지수"].sum()
+        top_y_reg  = df_interest[df_interest["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["관심도지수"].sum().idxmax()
+        top_o_reg  = df_interest[df_interest["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["관심도지수"].sum().idxmax()
+    
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">청년층 총 관심도지수</div>
+            <div class="kpi-value">{total_y_i:.1f}</div>
+            <div class="kpi-delta-up">▲ 청년층 지수합</div>
+            </div>""", unsafe_allow_html=True)
+        with k2:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">중장년층 총 관심도지수</div>
+            <div class="kpi-value">{total_o_i:.1f}</div>
+            <div class="kpi-delta-up" style="color:#059669;">▲ 중장년층 지수합</div>
+            </div>""", unsafe_allow_html=True)
+        with k3:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">청년층 관심도 1위 지역</div>
+            <div class="kpi-value" style="font-size:1.3rem;">{top_y_reg}</div>
+            <div class="kpi-delta-up">🏆 청년층 최고 관심</div>
+            </div>""", unsafe_allow_html=True)
+        with k4:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">중장년층 관심도 1위 지역</div>
+            <div class="kpi-value" style="font-size:1.3rem;">{top_o_reg}</div>
+            <div class="kpi-delta-up" style="color:#059669;">🏆 중장년층 최고 관심</div>
+            </div>""", unsafe_allow_html=True)
+    
+        st.markdown("---")
+    
+        tab1, tab2, tab3 = st.tabs(["📊 지역별 연령대 비교", "🌡️ 히트맵 분석", "📈 지역 상세 분석"])
+    
+        with tab1:
+            # 연령대별 상위권 관심도 순위 분할
+            rows_y = []
+            rows_o = []
+            for reg in REGIONS:
+                base_int = interest_map.get(reg, 0.0)
+                int_y = base_int * sum(AGE_INTEREST_RATIO[reg][0:4])
+                int_o = base_int * sum(AGE_INTEREST_RATIO[reg][4:7])
+                rows_y.append({"region": reg, "score": round(int_y, 1)})
+                rows_o.append({"region": reg, "score": round(int_o, 1)})
+    
+            df_y_int = pd.DataFrame(rows_y).sort_values(by="score", ascending=False).reset_index(drop=True)
+            df_o_int = pd.DataFrame(rows_o).sort_values(by="score", ascending=False).reset_index(drop=True)
+    
+            st.markdown("### 🏆 연령대별 통합 관심도 상위권 지역")
+            col_rank_a, col_rank_b = st.columns(2)
+            with col_rank_a:
+                st.markdown(f"""
+                <div class="rank-column-card">
+                    <h4 style="margin:0 0 12px 0; color:#1D4ED8; font-weight:700; border-bottom:2px solid #DBEAFE; padding-bottom:6px; font-size:1.05rem;">
+                        🔵 청년층 (10대~40대) Top 3
+                    </h4>
+                    <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥇</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_int.loc[0, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_int.loc[0, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥈</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_int.loc[1, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_int.loc[1, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥉</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_int.loc[2, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_int.loc[2, 'score']:.1f}</div>
+                        </div>
                     </div>
                 </div>
-                <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
-                    <div style="font-size:0.85rem; font-weight:700; color:#059669; margin-bottom:8px; text-align:center;">✈️ 방문도 Top 3</div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥇</span>
-                        <div><strong style="color:#059669; font-size:0.95rem;">{top3_o_vis.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_vis.loc[0, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                        <span style="font-size:1.1rem;">🥈</span>
-                        <div><strong style="color:#059669; font-size:0.95rem;">{top3_o_vis.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_vis.loc[1, 'score']:.1f})</span></div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <span style="font-size:1.1rem;">🥉</span>
-                        <div><strong style="color:#059669; font-size:0.95rem;">{top3_o_vis.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_vis.loc[2, 'score']:.1f})</span></div>
+                """, unsafe_allow_html=True)
+            with col_rank_b:
+                st.markdown(f"""
+                <div class="rank-column-card" style="border-top:4px solid #059669;">
+                    <h4 style="margin:0 0 12px 0; color:#059669; font-weight:700; border-bottom:2px solid #D1FAE5; padding-bottom:6px; font-size:1.05rem;">
+                        🟢 중장년층 (50대~90대) Top 3
+                    </h4>
+                    <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥇</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_int.loc[0, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_int.loc[0, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥈</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_int.loc[1, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_int.loc[1, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥉</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_int.loc[2, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_int.loc[2, 'score']:.1f}</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
-                <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
-                    <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 중장년층 고관심 &gt; 저방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">{o_gap_top['region']}</div>
-                    <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 {o_gap_top['int_rank']}위 {o_gap_top['int_score']:.1f} → 방문 {o_gap_top['vis_rank']}위 {o_gap_top['vis_score']:.1f}<br><strong>(잠재 미전환 Gap 1위)</strong></div>
-                </div>
-                <div style="background:#FFFFFF; border:1px solid #A7F3D0; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(5,150,105,0.05);">
-                    <div style="font-size:0.78rem; font-weight:700; color:#059669; margin-bottom:4px;">🎯 중장년층 저관심 &lt; 고방문</div>
-                    <div style="font-size:1.15rem; font-weight:800; color:#065F46;">{o_eff_top['region']}</div>
-                    <div style="font-size:0.75rem; color:#047857; margin-top:4px;">관심 {o_eff_top['int_rank']}위 {o_eff_top['int_score']:.1f} → 방문 {o_eff_top['vis_rank']}위 {o_eff_top['vis_score']:.1f}<br><strong>(방문전환 최고효율 {o_eff_top['eff']:.1f}%)</strong></div>
-                </div>
-            </div>
-            <div style="padding:10px 14px; background:#ECFDF5; border-radius:8px; font-size:0.83rem; color:#065F46; line-height:1.45; border:1px solid #A7F3D0;">
-                💡 <strong>중장년층 종합 결론</strong>: 중장년층은 <strong>{top3_o_int.loc[0, 'region']}({top3_o_int.loc[0, 'score']:.1f})</strong>, <strong>{top3_o_int.loc[1, 'region']}({top3_o_int.loc[1, 'score']:.1f})</strong> 등이 상위권을 차지하며 고유의 테마 선호도가 확고합니다. 특히 <strong>{o_eff_top['region']}</strong>는 관심 대비 방문 체류 효율({o_eff_top['eff']:.1f}%)이 가장 높게 나타난 반면, <strong>{o_gap_top['region']}</strong>는 온라인 관심 대비 실제 방문 체류로의 전환이 저조해 체류 콘텐츠 보완이 요구됩니다.
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # ─────────────────────────────────────────────────────────
-    # 관심도 vs 방문도 격차 비교 바차트 (Top 3 종합 비교 하단)
-    # ─────────────────────────────────────────────────────────
-    st.markdown("#### 📊 지역별 관심도 vs 방문도 및 격차 상세 시각화")
-    col_graph_y, col_graph_o = st.columns(2)
-    with col_graph_y:
-        df_y_sorted = df_y_unified.sort_values(by="int_score", ascending=False)
-        df_y_melt = df_y_sorted.melt(id_vars=["region", "gap"], value_vars=["int_score", "vis_score"], var_name="Metric", value_name="Score")
-        df_y_melt["Metric"] = df_y_melt["Metric"].map({"int_score": "관심도", "vis_score": "방문도"})
-        
-        fig_y_bar = px.bar(
-            df_y_melt,
-            x="region",
-            y="Score",
-            color="Metric",
-            barmode="group",
-            color_discrete_map={"관심도": "#60A5FA", "방문도": "#1D4ED8"},
-            title="🔵 청년층 지역별 관심도 vs 방문도 및 격차",
-            labels={"Score": "지수 (100점 만점)", "region": "지역", "Metric": "구분", "gap": "격차 (관심-방문)"},
-            hover_data={"gap": True, "Score": ":.1f"}
-        )
-        fig_y_bar.update_layout(
-            **LAYOUT_BASE,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis_title="지역",
-            yaxis_title="지수 (100점 만점)",
-            margin=dict(l=10, r=10, t=50, b=40)
-        )
-        chart_event_y = st.plotly_chart(fig_y_bar, use_container_width=True, on_select="rerun")
-        
-    with col_graph_o:
-        df_o_sorted = df_o_unified.sort_values(by="int_score", ascending=False)
-        df_o_melt = df_o_sorted.melt(id_vars=["region", "gap"], value_vars=["int_score", "vis_score"], var_name="Metric", value_name="Score")
-        df_o_melt["Metric"] = df_o_melt["Metric"].map({"int_score": "관심도", "vis_score": "방문도"})
-        
-        fig_o_bar = px.bar(
-            df_o_melt,
-            x="region",
-            y="Score",
-            color="Metric",
-            barmode="group",
-            color_discrete_map={"관심도": "#34D399", "방문도": "#047857"},
-            title="🟢 중장년층 지역별 관심도 vs 방문도 및 격차",
-            labels={"Score": "지수 (100점 만점)", "region": "지역", "Metric": "구분", "gap": "격차 (관심-방문)"},
-            hover_data={"gap": True, "Score": ":.1f"}
-        )
-        fig_o_bar.update_layout(
-            **LAYOUT_BASE,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            xaxis_title="지역",
-            yaxis_title="지수 (100점 만점)",
-            margin=dict(l=10, r=10, t=50, b=40)
-        )
-        chart_event_o = st.plotly_chart(fig_o_bar, use_container_width=True, on_select="rerun")
-
-    # Handle clicks to sync cmp_region
-    clicked_region = None
-    if chart_event_y and chart_event_y.get("selection", {}).get("points"):
-        pt = chart_event_y["selection"]["points"][0]
-        if "x" in pt and pt["x"] in REGIONS:
-            clicked_region = pt["x"]
-    elif chart_event_o and chart_event_o.get("selection", {}).get("points"):
-        pt = chart_event_o["selection"]["points"][0]
-        if "x" in pt and pt["x"] in REGIONS:
-            clicked_region = pt["x"]
-            
-    if clicked_region:
-        if st.session_state.get("cmp_region") != clicked_region:
-            st.session_state["cmp_region"] = clicked_region
-            st.rerun()
-
-    # 주요 분석 인사이트 — 외국인 관심도 vs 방문도 상관 및 갭(Gap) 분석
-    st.markdown("""
-    <div class="insight-summary-card insight-vs" style="margin-top:20px; margin-bottom:20px; border-left:4px solid #8B5CF6; padding:20px 24px; border-radius:12px; box-shadow:0 4px 12px rgba(139,92,246,0.06); background:#F9F8FF;">
-        <h4 style="margin:0 0 10px 0; color:#7C3AED; font-weight:700;">💡 주요 분석 인사이트 — 외국인 관심도 vs 방문도 상관 및 갭(Gap) 분석</h4>
-        <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
-            관심도와 방문도의 상관관계를 다각도로 시각화한 분석 결과, 온라인 탐색과 실제 방문 간에 큰 격차(Gap)가 발생하는 권역과 높은 전환을 보이는 권역이 명확히 구별됩니다.<br>
-            <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 매력도와 호기심을 유발하여 온라인 관심지수는 높은 편이나, 실제 체류 방문지수는 이를 하회하는 <strong>고관심 > 저방문 (+Gap)</strong> 경향이 나타납니다. 이는 <strong>잠재 관광객의 높은 호기심을 실제 방문 행동(Conversion)으로 유도</strong>하기 위해 KTX/여객 연계 셔틀버스 등 교통망 개선과 지역 통합 투어패스 확충이 시급한 정책적 당면 과제임을 실증합니다.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📡 스캐터 분석", "📊 갭 분석", "🌡️ 연령대별 히트맵", "🔬 지역별 심층 분석"
-    ])
-
-    with tab1:
-        st.markdown("#### 📡 관심도 vs 방문도 산점도 — 연령그룹별")
-        col_s1, col_s2 = st.columns(2)
-        for grp_name, grp_color, col in [
-            (GRP_YOUNG_LABEL, COLOR_YOUNG, col_s1),
-            (GRP_OLD_LABEL,   COLOR_OLD,   col_s2)
-        ]:
-            with col:
-                df_g = df_merged[df_merged["연령그룹"] == grp_name]
-                fig_sc = px.scatter(
-                    df_g, x="관심도지수", y="방문도지수", text="지역",
-                    size="방문도지수", size_max=40,
-                    color="전환효율", color_continuous_scale="RdYlGn",
+                """, unsafe_allow_html=True)
+    
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown(f"#### 🔵 청년층 지역별 관심도지수")
+                df_y = df_interest[df_interest["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["관심도지수"].sum().reset_index()
+                df_y = df_y.sort_values("관심도지수", ascending=True)
+                fig = px.bar(
+                    df_y, x="관심도지수", y="지역", orientation="h",
+                    color="관심도지수",
+                    color_continuous_scale=["#DBEAFE", "#60A5FA", "#1D4ED8"],
                     template="plotly_white",
-                    title=f"{grp_name} — 관심도 vs 방문도",
-                    labels={"관심도지수": "관심도지수 (0~100)", "방문도지수": "방문도지수 (0~100)"}
+                    labels={"관심도지수": "관심도지수"}
                 )
-                fig_sc.add_shape(
-                    type="line", x0=0, y0=0, x1=100, y1=100,
-                    line=dict(color="rgba(0,0,0,0.15)", dash="dash", width=1)
+                fig.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
+                fig.update_xaxes(gridcolor=GRID_COLOR)
+                fig.update_yaxes(gridcolor=GRID_COLOR)
+                st.plotly_chart(fig, use_container_width=True, key='chart_app_fig_22')
+    
+            with col_b:
+                st.markdown(f"#### 🟢 중장년층 지역별 관심도지수")
+                df_o = df_interest[df_interest["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["관심도지수"].sum().reset_index()
+                df_o = df_o.sort_values("관심도지수", ascending=True)
+                fig2 = px.bar(
+                    df_o, x="관심도지수", y="지역", orientation="h",
+                    color="관심도지수",
+                    color_continuous_scale=["#D1FAE5", "#34D399", "#059669"],
+                    template="plotly_white",
+                    labels={"관심도지수": "관심도지수"}
                 )
-                fig_sc.add_annotation(x=70, y=82, text="방문>관심 영역", showarrow=False,
-                                      font=dict(color="#64748B", size=9))
-                fig_sc.add_annotation(x=82, y=60, text="관심>방문 영역", showarrow=False,
-                                      font=dict(color="#64748B", size=9))
-                fig_sc.update_traces(textposition="top center", textfont_size=9, textfont_color="#0F172A")
-                fig_sc.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=20, r=20, t=50, b=20))
-                fig_sc.update_xaxes(gridcolor=GRID_COLOR, range=[0, 115])
-                fig_sc.update_yaxes(gridcolor=GRID_COLOR, range=[0, 115])
-                st.plotly_chart(fig_sc, use_container_width=True)
-
-        st.markdown("""
-        <div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-            <span style="font-weight:700; color:#1D4ED8; font-size:0.95rem;">💡 [스캐터 상관관계 핵심 분석 인사이트]</span>
-            <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
-                관심도(탐색 행동)와 방문도(실제 통계)의 산점도 분포를 분석한 결과, <strong>경기도</strong>와 <strong>인천광역시</strong>는 두 연령층 모두에서 우상단(관심·방문 모두 최고점)에 포지셔닝하여 명실상부한 핵심 허브 역할을 하고 있습니다. 반면, <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 대각선(y=x) 아래쪽(고관심·저방문)에 넓게 분포하여, 훌륭한 소셜 인지도 대비 실제 유입 전환 장벽을 해결하기 위한 <strong>광역 교통망 허브 연계 셔틀버스 활성화</strong> 및 <strong>체류 관광 상품 다각화</strong>가 가장 우선시됩니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="insight-box">
-        <strong>대각선 기준 해석</strong>: 점이 대각선(y=x) <strong>위</strong>에 위치할수록 관심도 대비 방문도가 높은 '방문 집중 지역',
-        <strong>아래</strong>에 위치할수록 관심도 대비 방문도가 낮은 '관심-방문 괴리 지역'입니다.
-        경기도는 두 연령그룹 모두에서 압도적인 절대 규모를 보이며, 강원·인천은 청년층 관심이 특히 높습니다.
-        </div>
-        """, unsafe_allow_html=True)
-
-    with tab2:
-        st.markdown("#### 📊 관심도 - 방문도 Gap 분석 (양수 = 관심>방문, 음수 = 방문>관심)")
-        col_g1, col_g2 = st.columns(2)
-        for grp_name, grp_color, col in [
-            (GRP_YOUNG_LABEL, COLOR_YOUNG, col_g1),
-            (GRP_OLD_LABEL,   COLOR_OLD,   col_g2)
-        ]:
-            with col:
-                df_g = df_merged[df_merged["연령그룹"] == grp_name].sort_values("Gap", ascending=False)
-                bar_colors = [grp_color if v > 0 else "#10B981" for v in df_g["Gap"]]
-                fig_gap = go.Figure(go.Bar(
-                    x=df_g["Gap"], y=df_g["지역"], orientation="h",
-                    marker_color=bar_colors,
-                    text=[f"{v:+.1f}" for v in df_g["Gap"]],
-                    textposition="outside",
-                    textfont=dict(color="#0F172A", size=10)
-                ))
-                fig_gap.add_vline(x=0, line_color="rgba(0,0,0,0.2)")
-                fig_gap.update_layout(
-                    **LAYOUT_BASE,
-                    title=dict(text=f"{grp_name} Gap 분포", font_color="#0F172A"),
-                    margin=dict(l=0, r=70, t=40, b=20),
-                    xaxis=dict(gridcolor=GRID_COLOR, title="관심도지수 − 방문도지수"),
-                    yaxis=dict(gridcolor=GRID_COLOR)
-                )
-                st.plotly_chart(fig_gap, use_container_width=True)
-
-        st.markdown("""
-        <div class="insight-box">
-        <strong>Gap 해석</strong>:
-        <strong style="color:#1D4ED8;">양수(+)</strong> → 관심 대비 방문 전환이 낮은 지역 (인프라·접근성 보완 필요) |
-        <strong style="color:#059669;">음수(−)</strong> → 방문이 관심보다 높은 핵심 방문 지역 (충성 관광객 다수)
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("""
-        <div style="background-color:#FDF2F8; border-left:4px solid #EC4899; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-            <span style="font-weight:700; color:#BE185D; font-size:0.95rem;">💡 [관심-방문 격차(Gap) 핵심 분석 인사이트]</span>
-            <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
-                지표 간 격차(관심도지수 - 방문도지수) 분포를 양수(+)와 음수(-) 영역으로 나누어 진단한 결과, 양의 격차가 가장 큰 <strong>강원</strong>과 <strong>전북</strong> 권역은 온라인 채널을 통한 프로모션 매력도가 성공적으로 도달했으나 실제 거리가 먼 여행지로 이동하는 과정에서 관광객 이탈(Drop-off)이 발생하는 전형적인 '마케팅 과열-유입 정체' 양상을 띱니다. 반면 음의 격차가 높은 <strong>전라남도</strong>와 <strong>경상북도</strong> 등은 사전 소셜 언급에 비해 현지 체류 방문 유입이 집중되는 경향을 보여, <strong>지역 전통 축제나 맛집 중심의 충성 방문층이 두텁게 형성</strong>되어 있음을 실증합니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with tab3:
-        st.markdown("#### 🌡️ 지표별 연령대 × 지역 히트맵")
-
-        metric_sel = st.selectbox(
-            "분석 지표 선택",
-            ["관심도지수", "방문도지수", "전환효율", "Gap"],
-            key="hm_metric"
-        )
-
-        df_age_all = pd.merge(
-            df_interest[["지역", "연령대", "관심도지수"]],
-            df_visit[["지역", "연령대", "방문도지수"]],
-            on=["지역", "연령대"]
-        )
-        df_age_all["전환효율"] = (df_age_all["방문도지수"] / df_age_all["관심도지수"]).round(3)
-        df_age_all["Gap"]      = (df_age_all["관심도지수"] - df_age_all["방문도지수"]).round(1)
-
-        pivot_h = df_age_all.pivot_table(
-            index="연령대", columns="지역", values=metric_sel, aggfunc="mean"
-        ).reindex(AGE_LABELS)
-
-        cmap = {"관심도지수": "Blues", "방문도지수": "Greens", "전환효율": "YlGn", "Gap": "RdBu_r"}
-        fig_hm = px.imshow(
-            pivot_h, color_continuous_scale=cmap[metric_sel],
-            aspect="auto", template="plotly_white",
-            labels=dict(x="지역", y="연령대", color=metric_sel)
-        )
-        fig_hm.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
-        fig_hm.update_xaxes(tickangle=-35)
-        st.plotly_chart(fig_hm, use_container_width=True)
-
-        st.markdown("#### 📋 연령그룹별 지역별 요약 테이블")
-        df_tbl = df_merged.pivot_table(
-            index="지역", columns="연령그룹",
-            values=["관심도지수", "방문도지수", "전환효율"],
-            aggfunc="mean"
-        ).round(2)
-        df_tbl.columns = [f"{col[1]} — {col[0]}" for col in df_tbl.columns]
-        st.dataframe(df_tbl, use_container_width=True)
-
-        st.markdown("""
-        <div style="background-color:#ECFDF5; border-left:4px solid #10B981; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-            <span style="font-weight:700; color:#047857; font-size:0.95rem;">💡 [연령대별 히트맵 매트릭스 핵심 인사이트]</span>
-            <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
-                연령대(10대~90대)와 14개 시도를 크로싱한 히트맵 지표 결과, <strong>청년층(10대~40대)</strong>은 트렌디한 인스타그램 피드 유행에 발맞추어 강원 바닷가, 경기도 테마파크, 인천 아울렛 쇼핑 명소에 급격한 핫플 선호 쏠림 현상을 보이고 있습니다. 반면, <strong>중장년층(50대~90대)</strong>은 내륙 전통 시장, 사찰/온천지, 문화유산 보존도가 높은 전라북도(전주 한옥마을 등) 및 경상북도(경주 역사유적 등) 권역에 장기 체류하는 경향이 뚜렷하여, <strong>연령별로 거점 관광 개발 전략을 이원화(청년: 인스타 뷰맛집 / 중장년: 웰니스 힐링 역사)</strong>해야 함을 보여줍니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with tab4:
-        st.markdown("#### 🔬 지역 선택 — 관심도 vs 방문도 심층 비교")
-        sel_cmp = st.selectbox("분석 대상 지역 선택", REGIONS, key="cmp_region")
-
-        df_sel = df_merged[df_merged["지역"] == sel_cmp]
-        df_age_sel = pd.merge(
-            df_interest[df_interest["지역"] == sel_cmp][["연령대", "관심도지수"]],
-            df_visit[df_visit["지역"] == sel_cmp][["연령대", "방문도지수"]],
-            on="연령대"
-        ).set_index("연령대")
-
-        # Render compare chips in two columns at the top to align charts perfectly
-        col_chip1, col_chip2 = st.columns(2)
-        with col_chip1:
-            row_y = df_sel[df_sel["연령그룹"] == GRP_YOUNG_LABEL].iloc[0]
-            gap_color_y = "#DC2626" if row_y["Gap"] > 0 else "#059669"
-            st.markdown(f"""
-            <div class="compare-chip">
-            <span class="badge-young">{GRP_YOUNG_LABEL}</span>
-            관심도지수 <strong>{row_y['관심도지수']:.1f}</strong> |
-            방문도지수 <strong>{row_y['방문도지수']:.1f}</strong> |
-            전환효율 <strong>{row_y['전환효율']:.2f}</strong> |
-            Gap <strong style="color:{gap_color_y};">{row_y['Gap']:+.1f}</strong>
-            </div>
-            """, unsafe_allow_html=True)
+                fig2.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
+                fig2.update_xaxes(gridcolor=GRID_COLOR)
+                fig2.update_yaxes(gridcolor=GRID_COLOR)
+                st.plotly_chart(fig2, use_container_width=True, key='chart_app_fig2_23')
+    
+            st.markdown("#### ⚡ 청년층 vs 중장년층 지역별 관심도 나란히 비교")
+            df_grp = df_interest.groupby(["지역", "연령그룹"])["관심도지수"].sum().reset_index()
+            order_i = df_interest.groupby("지역")["관심도지수"].sum().sort_values(ascending=False).index.tolist()
+            df_grp["지역"] = pd.Categorical(df_grp["지역"], categories=order_i, ordered=True)
+            df_grp = df_grp.sort_values("지역")
+            fig3 = px.bar(
+                df_grp, x="지역", y="관심도지수", color="연령그룹", barmode="group",
+                color_discrete_map={GRP_YOUNG_LABEL: COLOR_YOUNG, GRP_OLD_LABEL: COLOR_OLD},
+                template="plotly_white",
+                labels={"관심도지수": "관심도지수", "지역": ""}
+            )
+            fig3.update_layout(**LAYOUT_BASE, legend=dict(bgcolor="rgba(0,0,0,0)"), margin=dict(l=0, r=20, t=30, b=80))
+            fig3.update_xaxes(gridcolor=GRID_COLOR, tickangle=-35)
+            fig3.update_yaxes(gridcolor=GRID_COLOR)
+            st.plotly_chart(fig3, use_container_width=True, key='chart_app_fig3_24')
+    
+            st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [관심도 비교 차트 인사이트]</span> 청년층(10대~40대)은 강원·경기 등 레저/수도권 권역에 60점대 후반의 높은 호기심을 보이며, 중장년층(50대~90대)은 전북·경북 등 전통 문화와 식문화 보유 권역에 상대적으로 높은 선호를 보입니다.</div>""", unsafe_allow_html=True)
+    
+        with tab2:
+            st.markdown("#### 🌡️ 연령대 × 지역 관심도 히트맵 (지수 기준)")
+            pivot = df_interest.pivot_table(index="연령대", columns="지역", values="관심도지수", aggfunc="mean")
+            pivot = pivot.reindex(AGE_LABELS)
+            fig_heat = px.imshow(
+                pivot,
+                color_continuous_scale="Blues",
+                aspect="auto",
+                labels=dict(x="지역", y="연령대", color="관심도지수"),
+                template="plotly_white"
+            )
+            fig_heat.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
+            fig_heat.update_xaxes(tickangle=-35)
+            st.plotly_chart(fig_heat, use_container_width=True, key='chart_app_fig_heat_25')
+    
+            st.markdown("""<div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#1D4ED8;">📌 [히트맵 분석 인사이트]</span> 20대·30대 구간에서 강원·경기의 파란색 밀도가 가장 높게 집중되며, 연령대가 높아질수록(50대 이상) 전북·경북 등 내륙 권역의 호기심 비중이 뚜렷하게 상승합니다.</div>""", unsafe_allow_html=True)
+    
+        with tab3:
+            st.markdown("#### 📈 지역별 청년층 vs 중장년층 관심도율 비교")
             
-        with col_chip2:
-            row_o = df_sel[df_sel["연령그룹"] == GRP_OLD_LABEL].iloc[0]
-            gap_color_o = "#DC2626" if row_o["Gap"] > 0 else "#059669"
-            st.markdown(f"""
-            <div class="compare-chip">
-            <span class="badge-old">{GRP_OLD_LABEL}</span>
-            관심도지수 <strong>{row_o['관심도지수']:.1f}</strong> |
-            방문도지수 <strong>{row_o['방문도지수']:.1f}</strong> |
-            전환효율 <strong>{row_o['전환효율']:.2f}</strong> |
-            Gap <strong style="color:{gap_color_o};">{row_o['Gap']:+.1f}</strong>
-            </div>
-            """, unsafe_allow_html=True)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            # 레이더 — 관심도 vs 방문도
-            cats = AGE_LABELS + [AGE_LABELS[0]]
-            i_vals = [df_age_sel.loc[a, "관심도지수"] if a in df_age_sel.index else 0 for a in AGE_LABELS] + \
-                     [df_age_sel.loc[AGE_LABELS[0], "관심도지수"] if AGE_LABELS[0] in df_age_sel.index else 0]
-            v_vals = [df_age_sel.loc[a, "방문도지수"] if a in df_age_sel.index else 0 for a in AGE_LABELS] + \
-                     [df_age_sel.loc[AGE_LABELS[0], "방문도지수"] if AGE_LABELS[0] in df_age_sel.index else 0]
-
-            fig_rv = go.Figure()
-            fig_rv.add_trace(go.Scatterpolar(
-                r=i_vals, theta=cats, fill="toself", name="관심도",
-                line_color=COLOR_YOUNG, fillcolor="rgba(29,78,216,0.12)"
-            ))
-            fig_rv.add_trace(go.Scatterpolar(
-                r=v_vals, theta=cats, fill="toself", name="방문도",
-                line_color=COLOR_OLD, fillcolor="rgba(5,150,105,0.12)"
-            ))
-            fig_rv.update_layout(
-                polar=dict(
-                    radialaxis=dict(visible=True, range=[0, 100], gridcolor=GRID_COLOR, color="#475569"),
-                    angularaxis=dict(gridcolor=GRID_COLOR, color="#0F172A"),
-                    bgcolor="#F8FAFC"
-                ),
-                paper_bgcolor="#FFFFFF",
-                font_color="#0F172A",
-                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
-                title=dict(text=f"{sel_cmp} — 관심도 vs 방문도 레이더", font_color="#1D4ED8"),
-                margin=dict(l=60, r=60, t=70, b=50)
-            )
-            st.plotly_chart(fig_rv, use_container_width=True)
-
-        with col2:
-            fig_bar_cmp = go.Figure()
-            # Add Interest Index bar
-            fig_bar_cmp.add_trace(go.Bar(
-                x=df_age_sel.index,
-                y=df_age_sel["관심도지수"],
-                name="관심도",
-                marker_color=COLOR_YOUNG
-            ))
-            # Add Visit Index bar
-            fig_bar_cmp.add_trace(go.Bar(
-                x=df_age_sel.index,
-                y=df_age_sel["방문도지수"],
-                name="방문도",
-                marker_color=COLOR_OLD
-            ))
-            # Add Gap line
-            df_age_gap = df_age_sel.copy()
-            df_age_gap["Gap"] = df_age_gap["관심도지수"] - df_age_gap["방문도지수"]
-            fig_bar_cmp.add_trace(go.Scatter(
-                x=df_age_gap.index,
-                y=df_age_gap["Gap"],
-                name="격차 (관심-방문)",
-                mode="lines+markers+text",
-                line=dict(color="#EF4444", width=3, dash="dot"),
-                marker=dict(size=8, symbol="diamond"),
-                text=[f"{val:+.1f}" for val in df_age_gap["Gap"]],
-                textposition="top center"
-            ))
-            fig_bar_cmp.update_layout(
-                **LAYOUT_BASE,
-                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
-                margin=dict(l=0, r=0, t=65, b=50),
-                title=dict(text=f"{sel_cmp} — 연령대별 관심도 vs 방문도 및 Gap", font_color="#1D4ED8")
-            )
-            fig_bar_cmp.update_xaxes(gridcolor=GRID_COLOR)
-            fig_bar_cmp.update_yaxes(gridcolor=GRID_COLOR)
-            st.plotly_chart(fig_bar_cmp, use_container_width=True)
-
-
-        st.markdown(f"""
-        <div style="background-color:#F5F3FF; border-left:4px solid #8B5CF6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
-            <span style="font-weight:700; color:#6D28D9; font-size:0.95rem;">💡 [선택 지역 세대별·지역별 심층 매칭 인사이트]</span>
-            <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
-                선택하신 <strong>{sel_cmp}</strong>에 대한 세부 연령대별 레이더 분석 결과, 청년층과 중장년층 간의 탐색 채널과 실제 방문 체류 거동의 편차가 가장 뚜렷하게 관찰됩니다. 특히, 하단 <strong>시/군/구별 격차 분석</strong>을 통해 관심만 높고 방문으로 매칭되지 않는 취약 지자체(관심-방문 큰 Gap 지역)와, 외국인 유입 충성도가 높은 거점 도시가 명확하게 세분화됩니다. 해당 취약 시군에는 <strong>소셜 버즈를 자극할 수 있는 팝업 스토어 유치와 현지 체험형 테마 관광 패키지 연계 개발</strong>이 필수로 제안됩니다.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("---")
-        st.markdown(f"#### 🏙️ {sel_cmp} 내 세부 시/군/구별 관심도 vs 방문도 격차 분석")
-        
-        # Select age group for city comparison
-        sel_age_cmp = st.selectbox("시/군/구 분석 연령층 선택", ["전체", "청년층", "중장년층"], key="cmp_age_detail")
-        
-        df_sigun_i = get_sigun_interest(sel_cmp, sel_age_cmp)
-        df_sigun_v = get_sigun_visit(sel_cmp, sel_age_cmp)
-        
-        if not df_sigun_i.empty and not df_sigun_v.empty:
-            # Merge on city
-            df_sigun_cmp = pd.merge(
-                df_sigun_i[["city", "interest_score"]],
-                df_sigun_v[["city", "visit_score"]],
-                on="city"
-            )
-            df_sigun_cmp["gap"] = (df_sigun_cmp["interest_score"] - df_sigun_cmp["visit_score"]).round(1)
-            df_sigun_cmp = df_sigun_cmp.sort_values(by="interest_score", ascending=False)
+            # Calculate youth vs older interest indices and rates for all regions
+            rows_int_comp = []
+            for reg in REGIONS:
+                base_int = interest_map.get(reg, 0.0)
+                int_y = base_int * sum(AGE_INTEREST_RATIO[reg][0:4])
+                int_o = base_int * sum(AGE_INTEREST_RATIO[reg][4:7])
+                total_int = int_y + int_o if (int_y + int_o) > 0 else 1.0
+                
+                # Rate (%)
+                pct_y = (int_y / total_int) * 100.0
+                pct_o = (int_o / total_int) * 100.0
+                
+                rows_int_comp.append({
+                    "지역": reg,
+                    "청년층 관심도율 (%)": round(pct_y, 1),
+                    "중장년층 관심도율 (%)": round(pct_o, 1),
+                    "청년층 관심지수": round(int_y, 1),
+                    "중장년층 관심지수": round(int_o, 1)
+                })
+                
+            df_int_comp = pd.DataFrame(rows_int_comp)
             
-            # Grouped bar chart comparing interest vs visit
-            df_melt_sigun = df_sigun_cmp.melt(
-                id_vars=["city", "gap"],
-                value_vars=["interest_score", "visit_score"],
-                var_name="구분",
-                value_name="지수"
+            # Melt for plotting
+            df_int_melt = df_int_comp.melt(
+                id_vars=["지역", "청년층 관심지수", "중장년층 관심지수"],
+                value_vars=["청년층 관심도율 (%)", "중장년층 관심도율 (%)"],
+                var_name="그룹",
+                value_name="관심도율 (%)"
             )
-            df_melt_sigun["구분"] = df_melt_sigun["구분"].map({"interest_score": "관심도", "visit_score": "방문도"})
             
-            fig_sigun_cmp = px.bar(
-                df_melt_sigun,
-                x="city",
-                y="지수",
-                color="구분",
+            fig_int_comp = px.bar(
+                df_int_melt,
+                x="지역",
+                y="관심도율 (%)",
+                color="그룹",
                 barmode="group",
-                color_discrete_map={"관심도": "#3B82F6", "방문도": "#10B981"},
-                title=f"📊 {sel_cmp} 시/군/구별 {sel_age_cmp} 관심도 vs 방문도 지수 비교",
-                labels={"지수": "지수 (100점 만점)", "city": "시/군/구", "구분": "지표", "gap": "격차"},
-                hover_data={"gap": True, "지수": ":.1f"}
+                color_discrete_map={"청년층 관심도율 (%)": "#3B82F6", "중장년층 관심도율 (%)": "#93C5FD"},
+                hover_data=["청년층 관심지수", "중장년층 관심지수"],
+                title="📊 지역별 청년층 vs 중장년층 관심도율 (%) 비교 (막대를 클릭하면 상세 분석으로 연동됩니다)",
+                labels={"관심도율 (%)": "관심도율 (%)", "지역": "지역", "그룹": "연령그룹"}
             )
-            fig_sigun_cmp.update_layout(
+            fig_int_comp.update_layout(
                 **LAYOUT_BASE,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                xaxis_title="시/군/구",
-                yaxis_title="지수 (100점 만점)",
-                margin=dict(l=20, r=20, t=50, b=50)
+                xaxis_title="지역",
+                yaxis_title="관심도율 (%)",
+                margin=dict(l=10, r=10, t=50, b=40)
             )
-            st.plotly_chart(fig_sigun_cmp, use_container_width=True)
+            chart_event_int = st.plotly_chart(fig_int_comp, use_container_width=True, on_select="rerun", key='chart_app_fig_int_comp_26')
             
-            # Table of comparison
-            st.markdown(f"##### 🔢 {sel_cmp} 시/군/구별 세부 격차 데이터")
-            df_tbl_comp = df_sigun_cmp.copy()
-            df_tbl_comp.columns = ["시/군/구", "관심도 지수", "방문도 지수", "격차 (관심-방문)"]
-            st.dataframe(df_tbl_comp, use_container_width=True, hide_index=True)
+            # 바그래프 클릭 이벤트 연동
+            if chart_event_int and chart_event_int.get("selection", {}).get("points"):
+                pt = chart_event_int["selection"]["points"][0]
+                c_num = pt.get("curve_number", pt.get("curveNumber", 0))
+                clicked_group = "청년층" if c_num == 0 else "중장년층"
+                needs_rerun = False
+                if "x" in pt and pt["x"] in REGIONS:
+                    clicked_region = pt["x"]
+                    if st.session_state.get("int_radar") != clicked_region:
+                        st.session_state["int_radar"] = clicked_region
+                        needs_rerun = True
+                if st.session_state.get("int_age_detail") != clicked_group:
+                    st.session_state["int_age_detail"] = clicked_group
+                    needs_rerun = True
+                if needs_rerun:
+                    st.rerun()
             
-            # Insight card
-            y_gap_city = df_sigun_cmp.sort_values(by="gap", ascending=False).iloc[0]
-            v_high_city = df_sigun_cmp.sort_values(by="visit_score", ascending=False).iloc[0]
+            st.markdown("---")
+            st.markdown("#### 🔍 지역 및 연령층 선택 및 세부 시/군/구별 인기 관심도 분석")
+            
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                sel_region_int = st.selectbox("상세 분석할 지역 선택", REGIONS, key="int_radar")
+            with col_sel2:
+                sel_age_int = st.selectbox("분석할 연령층 선택", ["전체", "청년층", "중장년층"], key="int_age_detail")
+            
+            st.markdown(f"##### 📍 {sel_region_int} 내 {sel_age_int} 인기 관심 지역 순위")
+            df_sigun = get_sigun_interest(sel_region_int, sel_age_int)
+            if not df_sigun.empty:
+                # Plotly bar chart for si/gun
+                fig_sigun = px.bar(
+                    df_sigun,
+                    x="city",
+                    y="interest_score",
+                    color="interest_score",
+                    color_continuous_scale="Blues",
+                    text_auto=".1f",
+                    title=f"{sel_region_int} 시/군/구별 {sel_age_int} 관심도 지수 (100점 만점)",
+                    labels={"interest_score": "관심도 지수", "city": "시/군/구", "avg_rating": "평균 평점", "review_count": "리뷰 빈도 수"},
+                    hover_data=["avg_rating", "review_count"]
+                )
+                fig_sigun.update_layout(
+                    **LAYOUT_BASE,
+                    coloraxis_showscale=False,
+                    xaxis_title="시/군/구",
+                    yaxis_title="관심도 지수 (100점 만점)",
+                    margin=dict(l=20, r=20, t=50, b=50)
+                )
+                st.plotly_chart(fig_sigun, use_container_width=True, key='chart_app_fig_sigun_27')
+                
+                # Table of si/gun interest
+                st.markdown(f"##### 🔢 {sel_region_int} 시/군/구별 세부 수치")
+                df_tbl_sigun = df_sigun.copy()
+                df_tbl_sigun.columns = ["시/군/구", "관심도 지수 (100점 만점)", "리뷰 빈도 수", "평균 평점"]
+                st.dataframe(df_tbl_sigun, use_container_width=True, hide_index=True)
+                
+                # Fetch keywords dynamically
+                city_top_kws = get_regional_visit_keywords(sel_region_int, sel_age_int)
+                
+                # Build the detailed insights HTML
+                insights_html = f"""
+    <div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(59,130,246,0.06);">
+    <h4 style="margin:0 0 16px 0; color:#1D4ED8; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+    <span>📍 {sel_region_int} 시/군/구 단위 {sel_age_int} 심층 관심도 분석 및 소셜 트렌드</span>
+    </h4>
+    <p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
+    선택하신 <strong>{sel_region_int}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
+    외국인들의 관심 및 소셜 언급도가 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
+    </p>
+    """
+                
+                # Display top 3 cities
+                for idx, row in df_sigun.head(3).reset_index(drop=True).iterrows():
+                    city_name = row['city']
+                    score = row['interest_score']
+                    cnt = int(row['review_count'])
+                    avg_r = float(row['avg_rating'])
+                    kws_list = city_top_kws.get(city_name, ["관광", "korea", "travel"])
+                    kws_str = ", ".join([f"<span style='background:#E8F0FE; color:#1A73E8; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.8rem; font-weight:600;'>#{k}</span>" for k in kws_list])
+                    
+                    badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
+                    
+                    insights_html += f"""
+    <div style="background:#FFFFFF; border:1px solid #E8F0FE; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+    <strong style="color:#1D4ED8; font-size:1.05rem;">{badge_icon} {city_name}</strong>
+    <span style="font-size:0.85rem; background:#EFF6FF; color:#2563EB; padding:2px 8px; border-radius:12px; font-weight:600;">관심도지수: {score:.1f}점</span>
+    </div>
+    <div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
+    • <strong>관심 통계:</strong> 소셜 언급 및 상품 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
+    • <strong>주요 탐색 내용 & 연관 해시태그:</strong> {kws_str}
+    </div>
+    </div>
+    """
+                    
+                insights_html += "</div>"
+                st.markdown(insights_html, unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ 선택한 지역의 세부 시/군/구 데이터를 수집할 수 없습니다.")
+    
+    
+    
+    
+    # ═══════════════════════════════════════════════════════════
+    # 메뉴 2: 외국인 한국 지역별 방문도
+    # ═══════════════════════════════════════════════════════════
+    elif active_page == "visit":
+    
+        st.markdown('<div class="section-title">🚶 외국인 한국 지역별 방문도 — 청년층 vs 중장년층</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="insight-box">
+        <strong>통합 방문도</strong>는 KTO 공식 외래객 방문 통계, TripAdvisor 리뷰 수, Tumblr 후기 수, KKday 리뷰 수, GetYourGuide 리뷰 수, Creatrip 리뷰 수 지수들의 중간값(Median)으로 결과를 산출한 값입니다.<br>
+        <strong>청년층</strong>: 10대~40대 &nbsp;|&nbsp; <strong>중장년층</strong>: 50대~90대
+        </div>
+        """, unsafe_allow_html=True)
+    
+        total_y_v = df_visit[df_visit["연령그룹"] == GRP_YOUNG_LABEL]["방문도지수"].sum()
+        total_o_v = df_visit[df_visit["연령그룹"] == GRP_OLD_LABEL]["방문도지수"].sum()
+        top_y_vr  = df_visit[df_visit["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["방문도지수"].sum().idxmax()
+        top_o_vr  = df_visit[df_visit["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["방문도지수"].sum().idxmax()
+    
+        k1, k2, k3, k4 = st.columns(4)
+        with k1:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">청년층 총 방문도지수</div>
+            <div class="kpi-value">{total_y_v:.1f}</div>
+            <div class="kpi-delta-up">▲ 청년층 지수합</div>
+            </div>""", unsafe_allow_html=True)
+        with k2:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">중장년층 총 방문도지수</div>
+            <div class="kpi-value">{total_o_v:.1f}</div>
+            <div class="kpi-delta-up" style="color:#059669;">▲ 중장년층 지수합</div>
+            </div>""", unsafe_allow_html=True)
+        with k3:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">청년층 방문도 1위 지역</div>
+            <div class="kpi-value" style="font-size:1.3rem;">{top_y_vr}</div>
+            <div class="kpi-delta-up">🏆 청년층 최다 방문</div>
+            </div>""", unsafe_allow_html=True)
+        with k4:
+            st.markdown(f"""<div class="kpi-card">
+            <div class="kpi-label">중장년층 방문도 1위 지역</div>
+            <div class="kpi-value" style="font-size:1.3rem;">{top_o_vr}</div>
+            <div class="kpi-delta-up" style="color:#059669;">🏆 중장년층 최다 방문</div>
+            </div>""", unsafe_allow_html=True)
+    
+        st.markdown("---")
+    
+        tab1, tab2, tab3 = st.tabs(["📊 지역별 연령대 비교", "🌡️ 히트맵 분석", "📈 지역 상세 분석"])
+    
+        with tab1:
+            # 연령대별 상위권 방문도 순위 분할 (청년/중장년 특화 베이스 기준)
+            rows_y_vis = []
+            rows_o_vis = []
+            for reg in REGIONS:
+                vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+                vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
+                rows_y_vis.append({"region": reg, "score": round(vis_y, 1)})
+                rows_o_vis.append({"region": reg, "score": round(vis_o, 1)})
+    
+            df_y_vis = pd.DataFrame(rows_y_vis).sort_values(by="score", ascending=False).reset_index(drop=True)
+            df_o_vis = pd.DataFrame(rows_o_vis).sort_values(by="score", ascending=False).reset_index(drop=True)
+    
+            st.markdown("### 🏆 연령대별 통합 방문도 상위권 지역")
+            col_rank_a, col_rank_b = st.columns(2)
+            with col_rank_a:
+                st.markdown(f"""
+                <div class="rank-column-card">
+                    <h4 style="margin:0 0 12px 0; color:#1D4ED8; font-weight:700; border-bottom:2px solid #DBEAFE; padding-bottom:6px; font-size:1.05rem;">
+                        🔵 청년층 (10대~40대) Top 3
+                    </h4>
+                    <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥇</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_vis.loc[0, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_vis.loc[0, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥈</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_vis.loc[1, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_vis.loc[1, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥉</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#1D4ED8; font-weight:700;">{df_y_vis.loc[2, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_y_vis.loc[2, 'score']:.1f}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            with col_rank_b:
+                st.markdown(f"""
+                <div class="rank-column-card" style="border-top:4px solid #059669;">
+                    <h4 style="margin:0 0 12px 0; color:#059669; font-weight:700; border-bottom:2px solid #D1FAE5; padding-bottom:6px; font-size:1.05rem;">
+                        🟢 중장년층 (50대~90대) Top 3
+                    </h4>
+                    <div style="display:flex; justify-content:space-between; gap:10px; text-align:center;">
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥇</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_vis.loc[0, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_vis.loc[0, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥈</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_vis.loc[1, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_vis.loc[1, 'score']:.1f}</div>
+                        </div>
+                        <div class="top-rank-item">
+                            <span style="font-size:1.3rem;">🥉</span>
+                            <div class="top-rank-value" style="font-size:1.15rem; color:#059669; font-weight:700;">{df_o_vis.loc[2, 'region']}</div>
+                            <div class="top-rank-title" style="font-size:0.8rem; color:#64748B;">지수: {df_o_vis.loc[2, 'score']:.1f}</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.markdown("#### 🔵 청년층 지역별 방문도지수")
+                df_yv = df_visit[df_visit["연령그룹"] == GRP_YOUNG_LABEL].groupby("지역")["방문도지수"].sum().reset_index()
+                df_yv = df_yv.sort_values("방문도지수", ascending=True)
+                fig = px.bar(
+                    df_yv, x="방문도지수", y="지역", orientation="h",
+                    color="방문도지수",
+                    color_continuous_scale=["#DBEAFE", "#60A5FA", "#1D4ED8"],
+                    template="plotly_white",
+                    labels={"방문도지수": "방문도지수"}
+                )
+                fig.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
+                fig.update_xaxes(gridcolor=GRID_COLOR)
+                fig.update_yaxes(gridcolor=GRID_COLOR)
+                st.plotly_chart(fig, use_container_width=True, key='chart_app_fig_28')
+    
+            with col_b:
+                st.markdown("#### 🟢 중장년층 지역별 방문도지수")
+                df_ov = df_visit[df_visit["연령그룹"] == GRP_OLD_LABEL].groupby("지역")["방문도지수"].sum().reset_index()
+                df_ov = df_ov.sort_values("방문도지수", ascending=True)
+                fig2 = px.bar(
+                    df_ov, x="방문도지수", y="지역", orientation="h",
+                    color="방문도지수",
+                    color_continuous_scale=["#D1FAE5", "#34D399", "#059669"],
+                    template="plotly_white",
+                    labels={"방문도지수": "방문도지수"}
+                )
+                fig2.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=0, r=20, t=20, b=20))
+                fig2.update_xaxes(gridcolor=GRID_COLOR)
+                fig2.update_yaxes(gridcolor=GRID_COLOR)
+                st.plotly_chart(fig2, use_container_width=True, key='chart_app_fig2_29')
+    
+            st.markdown("#### ⚡ 청년층 vs 중장년층 지역별 방문도 나란히 비교")
+            order_v = df_visit.groupby("지역")["방문도지수"].sum().sort_values(ascending=False).index.tolist()
+            df_grpv = df_visit.groupby(["지역", "연령그룹"])["방문도지수"].sum().reset_index()
+            df_grpv["지역"] = pd.Categorical(df_grpv["지역"], categories=order_v, ordered=True)
+            df_grpv = df_grpv.sort_values("지역")
+            fig3 = px.bar(
+                df_grpv, x="지역", y="방문도지수", color="연령그룹", barmode="group",
+                color_discrete_map={GRP_YOUNG_LABEL: COLOR_YOUNG, GRP_OLD_LABEL: COLOR_OLD},
+                template="plotly_white",
+                labels={"방문도지수": "방문도지수", "지역": ""}
+            )
+            fig3.update_layout(**LAYOUT_BASE, legend=dict(bgcolor="rgba(0,0,0,0)"), margin=dict(l=0, r=20, t=30, b=80))
+            fig3.update_xaxes(gridcolor=GRID_COLOR, tickangle=-35)
+            fig3.update_yaxes(gridcolor=GRID_COLOR)
+            st.plotly_chart(fig3, use_container_width=True, key='chart_app_fig3_30')
+    
+            st.markdown("#### 🥧 지역별 연령대 구성 비율 (스택형)")
+            df_stack = df_visit.groupby(["지역", "연령대"])["방문도지수"].sum().reset_index()
+            df_stack["지역"] = pd.Categorical(df_stack["지역"], categories=order_v, ordered=True)
+            df_stack = df_stack.sort_values("지역")
+            fig_st = px.bar(
+                df_stack, x="지역", y="방문도지수", color="연령대", barmode="stack",
+                color_discrete_map=AGE_COLORS, template="plotly_white",
+                labels={"방문도지수": "방문도지수", "지역": ""}
+            )
+            fig_st.update_layout(
+                **LAYOUT_BASE,
+                legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="bottom", y=1.02),
+                margin=dict(l=0, r=20, t=50, b=80)
+            )
+            fig_st.update_xaxes(tickangle=-35, gridcolor=GRID_COLOR)
+            fig_st.update_yaxes(gridcolor=GRID_COLOR)
+            st.plotly_chart(fig_st, use_container_width=True, key='chart_app_fig_st_31')
+    
+            st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [방문도 비교 차트 인사이트]</span> 청년층 최다 방문 권역 1위는 경기도(59.0점), 2위 인천(49.6점), 3위 강원(46.6점)이며, 중장년층 1위는 전북(14.0점), 2위 경북(13.2점), 3위 전남(11.3점)으로 나타나 세대별 방문 거점의 명확한 지리적 차별화를 입증합니다.</div>""", unsafe_allow_html=True)
+    
+        with tab2:
+            st.markdown("#### 🌡️ 연령대 × 지역 방문도 히트맵 (지수 기준)")
+            pivot_v = df_visit.pivot_table(index="연령대", columns="지역", values="방문도지수", aggfunc="mean")
+            pivot_v = pivot_v.reindex(AGE_LABELS)
+            fig_heat = px.imshow(
+                pivot_v, color_continuous_scale="Greens",
+                aspect="auto", template="plotly_white",
+                labels=dict(x="지역", y="연령대", color="방문도지수")
+            )
+            fig_heat.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
+            fig_heat.update_xaxes(tickangle=-35)
+            st.plotly_chart(fig_heat, use_container_width=True, key='chart_app_fig_heat_32')
+    
+            st.markdown("""<div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:12px 16px; border-radius:6px; margin-top:16px;"><span style="font-weight:700; color:#059669;">📌 [히트맵 분석 인사이트]</span> 청년층은 수도권 및 동해안 리조트 벨트에 높은 밀도의 방문 패턴을 보이는 반면, 중장년층은 호남·영남 내륙 역사 및 미식 거점 도시들에 체류형 방문이 분산되는 경향을 나타냅니다.</div>""", unsafe_allow_html=True)
+    
+        with tab3:
+            st.markdown("#### 📈 지역별 청년층 vs 중장년층 방문도율 비교")
+            
+            # Calculate youth vs older visit indices and rates for all regions
+            rows_vis_comp = []
+            for reg in REGIONS:
+                vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+                vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
+                total_vis = vis_y + vis_o if (vis_y + vis_o) > 0 else 1.0
+                
+                # Rate (%)
+                pct_y = (vis_y / total_vis) * 100.0
+                pct_o = (vis_o / total_vis) * 100.0
+                
+                rows_vis_comp.append({
+                    "지역": reg,
+                    "청년층 방문도율 (%)": round(pct_y, 1),
+                    "중장년층 방문도율 (%)": round(pct_o, 1),
+                    "청년층 방문지수": round(vis_y, 1),
+                    "중장년층 방문지수": round(vis_o, 1)
+                })
+                
+            df_vis_comp = pd.DataFrame(rows_vis_comp)
+            
+            # Melt for plotting
+            df_vis_melt = df_vis_comp.melt(
+                id_vars=["지역", "청년층 방문지수", "중장년층 방문지수"],
+                value_vars=["청년층 방문도율 (%)", "중장년층 방문도율 (%)"],
+                var_name="그룹",
+                value_name="방문도율 (%)"
+            )
+            
+            fig_vis_comp = px.bar(
+                df_vis_melt,
+                x="지역",
+                y="방문도율 (%)",
+                color="그룹",
+                barmode="group",
+                color_discrete_map={"청년층 방문도율 (%)": "#10B981", "중장년층 방문도율 (%)": "#A7F3D0"},
+                hover_data=["청년층 방문지수", "중장년층 방문지수"],
+                title="📊 지역별 청년층 vs 중장년층 방문도율 (%) 비교 (막대를 클릭하면 상세 분석으로 연동됩니다)",
+                labels={"방문도율 (%)": "방문도율 (%)", "지역": "지역", "그룹": "연령그룹"}
+            )
+            fig_vis_comp.update_layout(
+                **LAYOUT_BASE,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis_title="지역",
+                yaxis_title="방문도율 (%)",
+                margin=dict(l=10, r=10, t=50, b=40)
+            )
+            chart_event = st.plotly_chart(fig_vis_comp, use_container_width=True, on_select="rerun", key='chart_app_fig_vis_comp_33')
+            
+            # 바그래프 클릭 이벤트 연동
+            if chart_event and chart_event.get("selection", {}).get("points"):
+                pt = chart_event["selection"]["points"][0]
+                c_num = pt.get("curve_number", pt.get("curveNumber", 0))
+                clicked_group = "청년층" if c_num == 0 else "중장년층"
+                needs_rerun = False
+                if "x" in pt and pt["x"] in REGIONS:
+                    clicked_region = pt["x"]
+                    if st.session_state.get("vis_detail") != clicked_region:
+                        st.session_state["vis_detail"] = clicked_region
+                        needs_rerun = True
+                if st.session_state.get("vis_age_detail") != clicked_group:
+                    st.session_state["vis_age_detail"] = clicked_group
+                    needs_rerun = True
+                if needs_rerun:
+                    st.rerun()
+            
+            st.markdown("---")
+            st.markdown("#### 🔍 지역 및 연령층 선택 및 세부 시/군/구별 인기 지역 분석")
+            
+            col_sel1, col_sel2 = st.columns(2)
+            with col_sel1:
+                sel_region_vis = st.selectbox("상세 분석할 지역 선택", REGIONS, key="vis_detail")
+            with col_sel2:
+                sel_age_vis = st.selectbox("분석할 연령층 선택", ["전체", "청년층", "중장년층"], key="vis_age_detail")
+            
+            st.markdown(f"##### 📍 {sel_region_vis} 내 {sel_age_vis} 인기 시/군/구 순위")
+            df_sigun_v = get_sigun_visit(sel_region_vis, sel_age_vis)
+            if not df_sigun_v.empty:
+                # Plotly bar chart for si/gun
+                fig_sigun_v = px.bar(
+                    df_sigun_v,
+                    x="city",
+                    y="visit_score",
+                    color="visit_score",
+                    color_continuous_scale="Greens",
+                    text_auto=".1f",
+                    title=f"{sel_region_vis} 시/군/구별 {sel_age_vis} 방문 지수 (100점 만점)",
+                    labels={"visit_score": "방문 지수", "city": "시/군/구", "review_count": "리뷰 빈도 수", "avg_rating": "평균 평점"},
+                    hover_data=["review_count", "avg_rating"]
+                )
+                fig_sigun_v.update_layout(
+                    **LAYOUT_BASE,
+                    coloraxis_showscale=False,
+                    xaxis_title="시/군/구",
+                    yaxis_title="방문 지수 (100점 만점)",
+                    margin=dict(l=20, r=20, t=50, b=50)
+                )
+                st.plotly_chart(fig_sigun_v, use_container_width=True, key='chart_app_fig_sigun_v_34')
+                
+                # Table of si/gun visit
+                st.markdown(f"##### 🔢 {sel_region_vis} 내 {sel_age_vis} 시/군/구별 세부 수치")
+                df_tbl_sigun_v = df_sigun_v[["city", "visit_score", "review_count"]].copy()
+                df_tbl_sigun_v.columns = ["시/군/구", "방문 지수 (100점 만점)", "실제 리뷰/게시물 수"]
+                st.dataframe(df_tbl_sigun_v, use_container_width=True, hide_index=True)
+                
+                # Fetch keywords dynamically
+                city_top_kws = get_regional_visit_keywords(sel_region_vis, sel_age_vis)
+                
+                # Build the detailed insights HTML
+                insights_html = f"""
+    <div style="background-color:#F0FDF4; border-left:4px solid #10B981; padding:20px 24px; border-radius:12px; margin-top:20px; box-shadow:0 4px 12px rgba(16,185,129,0.06);">
+    <h4 style="margin:0 0 16px 0; color:#065F46; font-weight:700; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+    <span>📍 {sel_region_vis} 시/군/구 단위 {sel_age_vis} 심층 방문 분석 및 소셜 트렌드</span>
+    </h4>
+    <p style="margin:0 0 16px 0; font-size:0.95rem; color:#374151; line-height:1.6;">
+    선택하신 <strong>{sel_region_vis}</strong>의 원천 데이터(소셜 피드, 관광 마켓플레이스 상품, 리뷰 등)를 정밀 분석한 결과, 
+    외국인 방문 유입량이 높은 상위권 세부 지역들의 핵심 활동과 여론 키워드는 다음과 같습니다.
+    </p>
+    """
+                
+                # Display top 3 cities
+                for idx, row in df_sigun_v.head(3).reset_index(drop=True).iterrows():
+                    city_name = row['city']
+                    score = row['visit_score']
+                    cnt = int(row['review_count'])
+                    avg_r = float(row['avg_rating'])
+                    kws_list = city_top_kws.get(city_name, ["관광", "korea", "travel"])
+                    kws_str = ", ".join([f"<span style='background:#E6F4EA; color:#137333; padding:2px 6px; border-radius:4px; margin-right:4px; font-size:0.8rem; font-weight:600;'>#{k}</span>" for k in kws_list])
+                    
+                    badge_icon = "🥇" if idx == 0 else ("🥈" if idx == 1 else "🥉")
+                    
+                    insights_html += f"""
+    <div style="background:#FFFFFF; border:1px solid #E6F4EA; border-radius:8px; padding:14px 18px; margin-bottom:12px; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+    <strong style="color:#065F46; font-size:1.05rem;">{badge_icon} {city_name}</strong>
+    <span style="font-size:0.85rem; background:#ECFDF5; color:#047857; padding:2px 8px; border-radius:12px; font-weight:600;">방문지수: {score:.1f}점</span>
+    </div>
+    <div style="font-size:0.88rem; color:#4B5563; line-height:1.65;">
+    • <strong>방문 통계:</strong> 소셜 버즈 및 리뷰 {cnt}건, 평균 평점 {avg_r:.2f}/5.0점<br>
+    • <strong>주요 리뷰 내용 & 연관 해시태그:</strong> {kws_str}
+    </div>
+    </div>
+    """
+                    
+                insights_html += "</div>"
+                st.markdown(insights_html, unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ 선택한 지역의 세부 시/군/구 데이터를 수집할 수 없습니다.")
+    
+    
+    
+    
+    elif active_page == "vs":
+    
+        st.markdown('<div class="section-title">⚖️ 외국인 관심도 vs 방문도 — 청년층 vs 중장년층 종합 비교</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="insight-box">
+        <strong>관심도 vs 방문도</strong>는 검색 탐색 행동(관심)과 실제 방문 행동의 차이를 분석합니다.
+        두 지표의 <strong>괴리(Gap)</strong>가 클수록 관심은 있지만 방문으로 이어지지 않거나,
+        반대로 관심 대비 방문이 집중되는 핵심 관광지임을 의미합니다.<br>
+        <strong>청년층</strong>: 10대~40대 &nbsp;|&nbsp; <strong>중장년층</strong>: 50대~90대
+        </div>
+        """, unsafe_allow_html=True)
+    
+        # 전처리
+        df_int_grp = df_interest.groupby(["지역", "연령그룹"])["관심도지수"].sum().reset_index()
+        df_vis_grp = df_visit.groupby(["지역", "연령그룹"])["방문도지수"].sum().reset_index()
+        df_merged  = pd.merge(df_int_grp, df_vis_grp, on=["지역", "연령그룹"])
+    
+        for grp in [GRP_YOUNG_LABEL, GRP_OLD_LABEL]:
+            mask = df_merged["연령그룹"] == grp
+            max_i = df_merged.loc[mask, "관심도지수"].max()
+            max_v = df_merged.loc[mask, "방문도지수"].max()
+            df_merged.loc[mask, "관심도지수"] = (df_merged.loc[mask, "관심도지수"] / max_i * 100).round(1)
+            df_merged.loc[mask, "방문도지수"] = (df_merged.loc[mask, "방문도지수"]           / max_v * 100).round(1)
+    
+        df_merged["전환효율"] = (df_merged["방문도지수"] / df_merged["관심도지수"]).round(3)
+        df_merged["Gap"]      = (df_merged["관심도지수"] - df_merged["방문도지수"]).round(1)
+    
+        df_y_m = df_merged[df_merged["연령그룹"] == GRP_YOUNG_LABEL]
+        df_o_m = df_merged[df_merged["연령그룹"] == GRP_OLD_LABEL]
+    
+        # 청년층 및 중장년층 관심도 Top 3 / 방문도 Top 3 산출 (원본 통합 중앙값 지수 기준)
+        rows_y_i, rows_o_i = [], []
+        rows_y_v, rows_o_v = [], []
+        for reg in REGIONS:
+            base_i = interest_map.get(reg, 0.0)
+            int_y = base_i * sum(AGE_INTEREST_RATIO[reg][0:4])
+            int_o = base_i * sum(AGE_INTEREST_RATIO[reg][4:7])
+            rows_y_i.append({"region": reg, "score": round(int_y, 1)})
+            rows_o_i.append({"region": reg, "score": round(int_o, 1)})
+    
+            vis_y = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][0:4])
+            vis_o = visit_map.get(reg, 0.0) * sum(AGE_VISIT_RATIO[reg][4:7])
+            rows_y_v.append({"region": reg, "score": round(vis_y, 1)})
+            rows_o_v.append({"region": reg, "score": round(vis_o, 1)})
+    
+        top3_y_int = pd.DataFrame(rows_y_i).sort_values("score", ascending=False).reset_index(drop=True)
+        top3_o_int = pd.DataFrame(rows_o_i).sort_values("score", ascending=False).reset_index(drop=True)
+        top3_y_vis = pd.DataFrame(rows_y_v).sort_values("score", ascending=False).reset_index(drop=True)
+        top3_o_vis = pd.DataFrame(rows_o_v).sort_values("score", ascending=False).reset_index(drop=True)
+    
+        df_y_unified = pd.DataFrame({"region": [r["region"] for r in rows_y_i], "int_score": [r["score"] for r in rows_y_i], "vis_score": [r["score"] for r in rows_y_v]})
+        df_y_unified["int_rank"] = df_y_unified["int_score"].rank(ascending=False, method='min').astype(int)
+        df_y_unified["vis_rank"] = df_y_unified["vis_score"].rank(ascending=False, method='min').astype(int)
+        df_y_unified["gap"] = df_y_unified["int_score"] - df_y_unified["vis_score"]
+        df_y_unified["eff"] = np.where(df_y_unified["int_score"] > 0, (df_y_unified["vis_score"] / df_y_unified["int_score"]) * 100, 0)
+        y_gap_top = df_y_unified[df_y_unified['int_rank'] <= 3].sort_values(by="gap", ascending=False).iloc[0]
+        y_eff_top = df_y_unified[df_y_unified['vis_rank'] <= 3].sort_values(by="eff", ascending=False).iloc[0]
+    
+        df_o_unified = pd.DataFrame({"region": [r["region"] for r in rows_o_i], "int_score": [r["score"] for r in rows_o_i], "vis_score": [r["score"] for r in rows_o_v]})
+        df_o_unified["int_rank"] = df_o_unified["int_score"].rank(ascending=False, method='min').astype(int)
+        df_o_unified["vis_rank"] = df_o_unified["vis_score"].rank(ascending=False, method='min').astype(int)
+        df_o_unified["gap"] = df_o_unified["int_score"] - df_o_unified["vis_score"]
+        df_o_unified["eff"] = np.where(df_o_unified["int_score"] > 0, (df_o_unified["vis_score"] / df_o_unified["int_score"]) * 100, 0)
+        o_gap_top = df_o_unified[df_o_unified['int_rank'] <= 3].sort_values(by="gap", ascending=False).iloc[0]
+        o_eff_top = df_o_unified[df_o_unified['vis_rank'] <= 3].sort_values(by="eff", ascending=False).iloc[0]
+    
+        st.markdown("### 🏆 연령대별 관심도 vs 방문도 Top 3 종합 비교")
+        col_top_y, col_top_o = st.columns(2)
+        with col_top_y:
             st.markdown(f"""
-            <div style="background-color:#F8FAFC; border-left:4px solid #8B5CF6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 4px 12px rgba(139,92,246,0.06);">
-                <span style="font-weight:700; color:#7C3AED;">📌 [시/군/구 격차 분석 인사이트]</span> 
-                <strong>{sel_cmp}</strong> 내에서 <strong>{y_gap_city['city']}</strong>(격차: {y_gap_city['gap']:+.1f})는 온라인 상의 높은 외국인 관심도 대비 실제 체류/방문 전환이 가장 취약합니다. 
-                반면 <strong>{v_high_city['city']}</strong>(방문지수: {v_high_city['visit_score']:.1f})는 실질적인 외국인 방문이 집중되는 주요 거점 도시입니다.
+            <div class="rank-column-card" style="border-top:4px solid #3B82F6; background:#F8FAFC; padding:16px; border-radius:12px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                <h4 style="margin:0 0 14px 0; color:#1D4ED8; font-weight:700; border-bottom:2px solid #DBEAFE; padding-bottom:8px; font-size:1.1rem; display:flex; align-items:center; justify-content:space-between;">
+                    <span>🔵 청년층 (10대~40대)</span>
+                    <span style="font-size:0.8rem; background:#EFF6FF; color:#2563EB; padding:3px 8px; border-radius:12px; font-weight:600;">Top 3 비교</span>
+                </h4>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
+                        <div style="font-size:0.85rem; font-weight:700; color:#64748B; margin-bottom:8px; text-align:center;">🔥 관심도 Top 3</div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥇</span>
+                            <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_y_int.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_int.loc[0, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥈</span>
+                            <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_y_int.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_int.loc[1, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:1.1rem;">🥉</span>
+                            <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_y_int.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_int.loc[2, 'score']:.1f})</span></div>
+                        </div>
+                    </div>
+                    <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
+                        <div style="font-size:0.85rem; font-weight:700; color:#2563EB; margin-bottom:8px; text-align:center;">✈️ 방문도 Top 3</div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥇</span>
+                            <div><strong style="color:#1D4ED8; font-size:0.95rem;">{top3_y_vis.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_vis.loc[0, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥈</span>
+                            <div><strong style="color:#1D4ED8; font-size:0.95rem;">{top3_y_vis.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_vis.loc[1, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:1.1rem;">🥉</span>
+                            <div><strong style="color:#1D4ED8; font-size:0.95rem;">{top3_y_vis.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_y_vis.loc[2, 'score']:.1f})</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
+                    <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
+                        <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 청년층 고관심 &gt; 저방문</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">{y_gap_top['region']}</div>
+                        <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 {y_gap_top['int_rank']}위 {y_gap_top['int_score']:.1f} → 방문 {y_gap_top['vis_rank']}위 {y_gap_top['vis_score']:.1f}<br><strong>(잠재 미전환 1위)</strong></div>
+                    </div>
+                    <div style="background:#FFFFFF; border:1px solid #BFDBFE; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(37,99,235,0.05);">
+                        <div style="font-size:0.78rem; font-weight:700; color:#2563EB; margin-bottom:4px;">🎯 청년층 저관심 &lt; 고방문</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#1E40AF;">{y_eff_top['region']}</div>
+                        <div style="font-size:0.75rem; color:#1D4ED8; margin-top:4px;">관심 {y_eff_top['int_rank']}위 {y_eff_top['int_score']:.1f} → 방문 {y_eff_top['vis_rank']}위 {y_eff_top['vis_score']:.1f}<br><strong>(방문전환율 {y_eff_top['eff']:.1f}%)</strong></div>
+                    </div>
+                </div>
+                <div style="padding:10px 14px; background:#EFF6FF; border-radius:8px; font-size:0.83rem; color:#1E3A8A; line-height:1.45; border:1px solid #DBEAFE;">
+                    💡 <strong>청년층 종합 결론</strong>: <strong>{y_gap_top['region']}</strong>는 청년층 온라인 관심도 {y_gap_top['int_rank']}위({y_gap_top['int_score']:.1f})이나 실제 방문에서는 {y_gap_top['vis_rank']}위에 머물러 미전환 갭이 가장 큽니다. 반면 <strong>{y_eff_top['region']}</strong>는 뛰어난 교통 접근성과 인프라로 관심 대비 방문 전환율 최고효율({y_eff_top['eff']:.1f}%) 및 방문 {y_eff_top['vis_rank']}위를 달성했습니다.
+                </div>
             </div>
             """, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ 해당 지역의 세부 시/군/구 데이터를 불러올 수 없습니다.")
+        with col_top_o:
+            st.markdown(f"""
+            <div class="rank-column-card" style="border-top:4px solid #059669; background:#F8FAFC; padding:16px; border-radius:12px; margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                <h4 style="margin:0 0 14px 0; color:#059669; font-weight:700; border-bottom:2px solid #D1FAE5; padding-bottom:8px; font-size:1.1rem; display:flex; align-items:center; justify-content:space-between;">
+                    <span>🟢 중장년층 (50대~90대)</span>
+                    <span style="font-size:0.8rem; background:#ECFDF5; color:#059669; padding:3px 8px; border-radius:12px; font-weight:600;">Top 3 비교</span>
+                </h4>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
+                        <div style="font-size:0.85rem; font-weight:700; color:#64748B; margin-bottom:8px; text-align:center;">🔥 관심도 Top 3</div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥇</span>
+                            <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_o_int.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_int.loc[0, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥈</span>
+                            <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_o_int.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_int.loc[1, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:1.1rem;">🥉</span>
+                            <div><strong style="color:#1E293B; font-size:0.95rem;">{top3_o_int.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_int.loc[2, 'score']:.1f})</span></div>
+                        </div>
+                    </div>
+                    <div style="background:#FFFFFF; padding:12px; border-radius:8px; border:1px solid #E2E8F0;">
+                        <div style="font-size:0.85rem; font-weight:700; color:#059669; margin-bottom:8px; text-align:center;">✈️ 방문도 Top 3</div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥇</span>
+                            <div><strong style="color:#059669; font-size:0.95rem;">{top3_o_vis.loc[0, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_vis.loc[0, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:1.1rem;">🥈</span>
+                            <div><strong style="color:#059669; font-size:0.95rem;">{top3_o_vis.loc[1, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_vis.loc[1, 'score']:.1f})</span></div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:1.1rem;">🥉</span>
+                            <div><strong style="color:#059669; font-size:0.95rem;">{top3_o_vis.loc[2, 'region']}</strong> <span style="font-size:0.75rem; color:#64748B;">({top3_o_vis.loc[2, 'score']:.1f})</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0 12px 0;">
+                    <div style="background:#FFFFFF; border:1px solid #FECACA; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(220,38,38,0.05);">
+                        <div style="font-size:0.78rem; font-weight:700; color:#DC2626; margin-bottom:4px;">⚠️ 중장년층 고관심 &gt; 저방문</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#991B1B;">{o_gap_top['region']}</div>
+                        <div style="font-size:0.75rem; color:#B91C1C; margin-top:4px;">관심 {o_gap_top['int_rank']}위 {o_gap_top['int_score']:.1f} → 방문 {o_gap_top['vis_rank']}위 {o_gap_top['vis_score']:.1f}<br><strong>(잠재 미전환 Gap 1위)</strong></div>
+                    </div>
+                    <div style="background:#FFFFFF; border:1px solid #A7F3D0; padding:12px; border-radius:8px; text-align:center; box-shadow:0 1px 4px rgba(5,150,105,0.05);">
+                        <div style="font-size:0.78rem; font-weight:700; color:#059669; margin-bottom:4px;">🎯 중장년층 저관심 &lt; 고방문</div>
+                        <div style="font-size:1.15rem; font-weight:800; color:#065F46;">{o_eff_top['region']}</div>
+                        <div style="font-size:0.75rem; color:#047857; margin-top:4px;">관심 {o_eff_top['int_rank']}위 {o_eff_top['int_score']:.1f} → 방문 {o_eff_top['vis_rank']}위 {o_eff_top['vis_score']:.1f}<br><strong>(방문전환 최고효율 {o_eff_top['eff']:.1f}%)</strong></div>
+                    </div>
+                </div>
+                <div style="padding:10px 14px; background:#ECFDF5; border-radius:8px; font-size:0.83rem; color:#065F46; line-height:1.45; border:1px solid #A7F3D0;">
+                    💡 <strong>중장년층 종합 결론</strong>: 중장년층은 <strong>{top3_o_int.loc[0, 'region']}({top3_o_int.loc[0, 'score']:.1f})</strong>, <strong>{top3_o_int.loc[1, 'region']}({top3_o_int.loc[1, 'score']:.1f})</strong> 등이 상위권을 차지하며 고유의 테마 선호도가 확고합니다. 특히 <strong>{o_eff_top['region']}</strong>는 관심 대비 방문 체류 효율({o_eff_top['eff']:.1f}%)이 가장 높게 나타난 반면, <strong>{o_gap_top['region']}</strong>는 온라인 관심 대비 실제 방문 체류로의 전환이 저조해 체류 콘텐츠 보완이 요구됩니다.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+        # ─────────────────────────────────────────────────────────
+        # 관심도 vs 방문도 격차 비교 바차트 (Top 3 종합 비교 하단)
+        # ─────────────────────────────────────────────────────────
+        st.markdown("#### 📊 지역별 관심도 vs 방문도 및 격차 상세 시각화")
+        col_graph_y, col_graph_o = st.columns(2)
+        with col_graph_y:
+            df_y_sorted = df_y_unified.sort_values(by="int_score", ascending=False)
+            df_y_melt = df_y_sorted.melt(id_vars=["region", "gap"], value_vars=["int_score", "vis_score"], var_name="Metric", value_name="Score")
+            df_y_melt["Metric"] = df_y_melt["Metric"].map({"int_score": "관심도", "vis_score": "방문도"})
+            
+            fig_y_bar = px.bar(
+                df_y_melt,
+                x="region",
+                y="Score",
+                color="Metric",
+                barmode="group",
+                color_discrete_map={"관심도": "#60A5FA", "방문도": "#1D4ED8"},
+                title="🔵 청년층 지역별 관심도 vs 방문도 및 격차",
+                labels={"Score": "지수 (100점 만점)", "region": "지역", "Metric": "구분", "gap": "격차 (관심-방문)"},
+                hover_data={"gap": True, "Score": ":.1f"}
+            )
+            fig_y_bar.update_layout(
+                **LAYOUT_BASE,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis_title="지역",
+                yaxis_title="지수 (100점 만점)",
+                margin=dict(l=10, r=10, t=50, b=40)
+            )
+            chart_event_y = st.plotly_chart(fig_y_bar, use_container_width=True, on_select="rerun", key='chart_app_fig_y_bar_35')
+            
+        with col_graph_o:
+            df_o_sorted = df_o_unified.sort_values(by="int_score", ascending=False)
+            df_o_melt = df_o_sorted.melt(id_vars=["region", "gap"], value_vars=["int_score", "vis_score"], var_name="Metric", value_name="Score")
+            df_o_melt["Metric"] = df_o_melt["Metric"].map({"int_score": "관심도", "vis_score": "방문도"})
+            
+            fig_o_bar = px.bar(
+                df_o_melt,
+                x="region",
+                y="Score",
+                color="Metric",
+                barmode="group",
+                color_discrete_map={"관심도": "#34D399", "방문도": "#047857"},
+                title="🟢 중장년층 지역별 관심도 vs 방문도 및 격차",
+                labels={"Score": "지수 (100점 만점)", "region": "지역", "Metric": "구분", "gap": "격차 (관심-방문)"},
+                hover_data={"gap": True, "Score": ":.1f"}
+            )
+            fig_o_bar.update_layout(
+                **LAYOUT_BASE,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis_title="지역",
+                yaxis_title="지수 (100점 만점)",
+                margin=dict(l=10, r=10, t=50, b=40)
+            )
+            chart_event_o = st.plotly_chart(fig_o_bar, use_container_width=True, on_select="rerun", key='chart_app_fig_o_bar_36')
+    
+        # Handle clicks to sync cmp_region
+        clicked_region = None
+        if chart_event_y and chart_event_y.get("selection", {}).get("points"):
+            pt = chart_event_y["selection"]["points"][0]
+            if "x" in pt and pt["x"] in REGIONS:
+                clicked_region = pt["x"]
+        elif chart_event_o and chart_event_o.get("selection", {}).get("points"):
+            pt = chart_event_o["selection"]["points"][0]
+            if "x" in pt and pt["x"] in REGIONS:
+                clicked_region = pt["x"]
+                
+        if clicked_region:
+            if st.session_state.get("cmp_region") != clicked_region:
+                st.session_state["cmp_region"] = clicked_region
+                st.rerun()
+    
+        # 주요 분석 인사이트 — 외국인 관심도 vs 방문도 상관 및 갭(Gap) 분석
+        st.markdown("""
+        <div class="insight-summary-card insight-vs" style="margin-top:20px; margin-bottom:20px; border-left:4px solid #8B5CF6; padding:20px 24px; border-radius:12px; box-shadow:0 4px 12px rgba(139,92,246,0.06); background:#F9F8FF;">
+            <h4 style="margin:0 0 10px 0; color:#7C3AED; font-weight:700;">💡 주요 분석 인사이트 — 외국인 관심도 vs 방문도 상관 및 갭(Gap) 분석</h4>
+            <p style="margin:0; font-size:0.95rem; color:#334155; line-height:1.65; text-align:justify;">
+                관심도와 방문도의 상관관계를 다각도로 시각화한 분석 결과, 온라인 탐색과 실제 방문 간에 큰 격차(Gap)가 발생하는 권역과 높은 전환을 보이는 권역이 명확히 구별됩니다.<br>
+                <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 매력도와 호기심을 유발하여 온라인 관심지수는 높은 편이나, 실제 체류 방문지수는 이를 하회하는 <strong>고관심 > 저방문 (+Gap)</strong> 경향이 나타납니다. 이는 <strong>잠재 관광객의 높은 호기심을 실제 방문 행동(Conversion)으로 유도</strong>하기 위해 KTX/여객 연계 셔틀버스 등 교통망 개선과 지역 통합 투어패스 확충이 시급한 정책적 당면 과제임을 실증합니다.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+        st.markdown("---")
+    
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📡 스캐터 분석", "📊 갭 분석", "🌡️ 연령대별 히트맵", "🔬 지역별 심층 분석"
+        ])
+    
+        with tab1:
+            st.markdown("#### 📡 관심도 vs 방문도 산점도 — 연령그룹별")
+            col_s1, col_s2 = st.columns(2)
+            for grp_name, grp_color, col in [
+                (GRP_YOUNG_LABEL, COLOR_YOUNG, col_s1),
+                (GRP_OLD_LABEL,   COLOR_OLD,   col_s2)
+            ]:
+                with col:
+                    df_g = df_merged[df_merged["연령그룹"] == grp_name]
+                    fig_sc = px.scatter(
+                        df_g, x="관심도지수", y="방문도지수", text="지역",
+                        size="방문도지수", size_max=40,
+                        color="전환효율", color_continuous_scale="RdYlGn",
+                        template="plotly_white",
+                        title=f"{grp_name} — 관심도 vs 방문도",
+                        labels={"관심도지수": "관심도지수 (0~100)", "방문도지수": "방문도지수 (0~100)"}
+                    )
+                    fig_sc.add_shape(
+                        type="line", x0=0, y0=0, x1=100, y1=100,
+                        line=dict(color="rgba(0,0,0,0.15)", dash="dash", width=1)
+                    )
+                    fig_sc.add_annotation(x=70, y=82, text="방문>관심 영역", showarrow=False,
+                                          font=dict(color="#64748B", size=9))
+                    fig_sc.add_annotation(x=82, y=60, text="관심>방문 영역", showarrow=False,
+                                          font=dict(color="#64748B", size=9))
+                    fig_sc.update_traces(textposition="top center", textfont_size=9, textfont_color="#0F172A")
+                    fig_sc.update_layout(**LAYOUT_BASE, coloraxis_showscale=False, margin=dict(l=20, r=20, t=50, b=20))
+                    fig_sc.update_xaxes(gridcolor=GRID_COLOR, range=[0, 115])
+                    fig_sc.update_yaxes(gridcolor=GRID_COLOR, range=[0, 115])
+                    st.plotly_chart(fig_sc, use_container_width=True, key=f'chart_app_fig_sc_37_{grp_name}')
+    
+            st.markdown("""
+            <div style="background-color:#F8FAFC; border-left:4px solid #3B82F6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                <span style="font-weight:700; color:#1D4ED8; font-size:0.95rem;">💡 [스캐터 상관관계 핵심 분석 인사이트]</span>
+                <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
+                    관심도(탐색 행동)와 방문도(실제 통계)의 산점도 분포를 분석한 결과, <strong>경기도</strong>와 <strong>인천광역시</strong>는 두 연령층 모두에서 우상단(관심·방문 모두 최고점)에 포지셔닝하여 명실상부한 핵심 허브 역할을 하고 있습니다. 반면, <strong>강원특별자치도</strong>와 <strong>전북특별자치도</strong> 등은 대각선(y=x) 아래쪽(고관심·저방문)에 넓게 분포하여, 훌륭한 소셜 인지도 대비 실제 유입 전환 장벽을 해결하기 위한 <strong>광역 교통망 허브 연계 셔틀버스 활성화</strong> 및 <strong>체류 관광 상품 다각화</strong>가 가장 우선시됩니다.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+            st.markdown("""
+            <div class="insight-box">
+            <strong>대각선 기준 해석</strong>: 점이 대각선(y=x) <strong>위</strong>에 위치할수록 관심도 대비 방문도가 높은 '방문 집중 지역',
+            <strong>아래</strong>에 위치할수록 관심도 대비 방문도가 낮은 '관심-방문 괴리 지역'입니다.
+            경기도는 두 연령그룹 모두에서 압도적인 절대 규모를 보이며, 강원·인천은 청년층 관심이 특히 높습니다.
+            </div>
+            """, unsafe_allow_html=True)
+    
+        with tab2:
+            st.markdown("#### 📊 관심도 - 방문도 Gap 분석 (양수 = 관심>방문, 음수 = 방문>관심)")
+            col_g1, col_g2 = st.columns(2)
+            for grp_name, grp_color, col in [
+                (GRP_YOUNG_LABEL, COLOR_YOUNG, col_g1),
+                (GRP_OLD_LABEL,   COLOR_OLD,   col_g2)
+            ]:
+                with col:
+                    df_g = df_merged[df_merged["연령그룹"] == grp_name].sort_values("Gap", ascending=False)
+                    bar_colors = [grp_color if v > 0 else "#10B981" for v in df_g["Gap"]]
+                    fig_gap = go.Figure(go.Bar(
+                        x=df_g["Gap"], y=df_g["지역"], orientation="h",
+                        marker_color=bar_colors,
+                        text=[f"{v:+.1f}" for v in df_g["Gap"]],
+                        textposition="outside",
+                        textfont=dict(color="#0F172A", size=10)
+                    ))
+                    fig_gap.add_vline(x=0, line_color="rgba(0,0,0,0.2)")
+                    fig_gap.update_layout(
+                        **LAYOUT_BASE,
+                        title=dict(text=f"{grp_name} Gap 분포", font_color="#0F172A"),
+                        margin=dict(l=0, r=70, t=40, b=20),
+                        xaxis=dict(gridcolor=GRID_COLOR, title="관심도지수 − 방문도지수"),
+                        yaxis=dict(gridcolor=GRID_COLOR)
+                    )
+                    st.plotly_chart(fig_gap, use_container_width=True, key=f'chart_app_fig_gap_38_{grp_name}')
+    
+            st.markdown("""
+            <div class="insight-box">
+            <strong>Gap 해석</strong>:
+            <strong style="color:#1D4ED8;">양수(+)</strong> → 관심 대비 방문 전환이 낮은 지역 (인프라·접근성 보완 필요) |
+            <strong style="color:#059669;">음수(−)</strong> → 방문이 관심보다 높은 핵심 방문 지역 (충성 관광객 다수)
+            </div>
+            """, unsafe_allow_html=True)
+    
+            st.markdown("""
+            <div style="background-color:#FDF2F8; border-left:4px solid #EC4899; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                <span style="font-weight:700; color:#BE185D; font-size:0.95rem;">💡 [관심-방문 격차(Gap) 핵심 분석 인사이트]</span>
+                <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
+                    지표 간 격차(관심도지수 - 방문도지수) 분포를 양수(+)와 음수(-) 영역으로 나누어 진단한 결과, 양의 격차가 가장 큰 <strong>강원</strong>과 <strong>전북</strong> 권역은 온라인 채널을 통한 프로모션 매력도가 성공적으로 도달했으나 실제 거리가 먼 여행지로 이동하는 과정에서 관광객 이탈(Drop-off)이 발생하는 전형적인 '마케팅 과열-유입 정체' 양상을 띱니다. 반면 음의 격차가 높은 <strong>전라남도</strong>와 <strong>경상북도</strong> 등은 사전 소셜 언급에 비해 현지 체류 방문 유입이 집중되는 경향을 보여, <strong>지역 전통 축제나 맛집 중심의 충성 방문층이 두텁게 형성</strong>되어 있음을 실증합니다.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+        with tab3:
+            st.markdown("#### 🌡️ 지표별 연령대 × 지역 히트맵")
+    
+            metric_sel = st.selectbox(
+                "분석 지표 선택",
+                ["관심도지수", "방문도지수", "전환효율", "Gap"],
+                key="hm_metric"
+            )
+    
+            df_age_all = pd.merge(
+                df_interest[["지역", "연령대", "관심도지수"]],
+                df_visit[["지역", "연령대", "방문도지수"]],
+                on=["지역", "연령대"]
+            )
+            df_age_all["전환효율"] = (df_age_all["방문도지수"] / df_age_all["관심도지수"]).round(3)
+            df_age_all["Gap"]      = (df_age_all["관심도지수"] - df_age_all["방문도지수"]).round(1)
+    
+            pivot_h = df_age_all.pivot_table(
+                index="연령대", columns="지역", values=metric_sel, aggfunc="mean"
+            ).reindex(AGE_LABELS)
+    
+            cmap = {"관심도지수": "Blues", "방문도지수": "Greens", "전환효율": "YlGn", "Gap": "RdBu_r"}
+            fig_hm = px.imshow(
+                pivot_h, color_continuous_scale=cmap[metric_sel],
+                aspect="auto", template="plotly_white",
+                labels=dict(x="지역", y="연령대", color=metric_sel)
+            )
+            fig_hm.update_layout(**LAYOUT_BASE, margin=dict(l=20, r=20, t=30, b=90))
+            fig_hm.update_xaxes(tickangle=-35)
+            st.plotly_chart(fig_hm, use_container_width=True, key='chart_app_fig_hm_39')
+    
+            st.markdown("#### 📋 연령그룹별 지역별 요약 테이블")
+            df_tbl = df_merged.pivot_table(
+                index="지역", columns="연령그룹",
+                values=["관심도지수", "방문도지수", "전환효율"],
+                aggfunc="mean"
+            ).round(2)
+            df_tbl.columns = [f"{col[1]} — {col[0]}" for col in df_tbl.columns]
+            st.dataframe(df_tbl, use_container_width=True)
+    
+            st.markdown("""
+            <div style="background-color:#ECFDF5; border-left:4px solid #10B981; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                <span style="font-weight:700; color:#047857; font-size:0.95rem;">💡 [연령대별 히트맵 매트릭스 핵심 인사이트]</span>
+                <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
+                    연령대(10대~90대)와 14개 시도를 크로싱한 히트맵 지표 결과, <strong>청년층(10대~40대)</strong>은 트렌디한 인스타그램 피드 유행에 발맞추어 강원 바닷가, 경기도 테마파크, 인천 아울렛 쇼핑 명소에 급격한 핫플 선호 쏠림 현상을 보이고 있습니다. 반면, <strong>중장년층(50대~90대)</strong>은 내륙 전통 시장, 사찰/온천지, 문화유산 보존도가 높은 전라북도(전주 한옥마을 등) 및 경상북도(경주 역사유적 등) 권역에 장기 체류하는 경향이 뚜렷하여, <strong>연령별로 거점 관광 개발 전략을 이원화(청년: 인스타 뷰맛집 / 중장년: 웰니스 힐링 역사)</strong>해야 함을 보여줍니다.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+        with tab4:
+            st.markdown("#### 🔬 지역 선택 — 관심도 vs 방문도 심층 비교")
+            sel_cmp = st.selectbox("분석 대상 지역 선택", REGIONS, key="cmp_region")
+    
+            df_sel = df_merged[df_merged["지역"] == sel_cmp]
+            df_age_sel = pd.merge(
+                df_interest[df_interest["지역"] == sel_cmp][["연령대", "관심도지수"]],
+                df_visit[df_visit["지역"] == sel_cmp][["연령대", "방문도지수"]],
+                on="연령대"
+            ).set_index("연령대")
+    
+            # Render compare chips in two columns at the top to align charts perfectly
+            col_chip1, col_chip2 = st.columns(2)
+            with col_chip1:
+                row_y = df_sel[df_sel["연령그룹"] == GRP_YOUNG_LABEL].iloc[0]
+                gap_color_y = "#DC2626" if row_y["Gap"] > 0 else "#059669"
+                st.markdown(f"""
+                <div class="compare-chip">
+                <span class="badge-young">{GRP_YOUNG_LABEL}</span>
+                관심도지수 <strong>{row_y['관심도지수']:.1f}</strong> |
+                방문도지수 <strong>{row_y['방문도지수']:.1f}</strong> |
+                전환효율 <strong>{row_y['전환효율']:.2f}</strong> |
+                Gap <strong style="color:{gap_color_y};">{row_y['Gap']:+.1f}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col_chip2:
+                row_o = df_sel[df_sel["연령그룹"] == GRP_OLD_LABEL].iloc[0]
+                gap_color_o = "#DC2626" if row_o["Gap"] > 0 else "#059669"
+                st.markdown(f"""
+                <div class="compare-chip">
+                <span class="badge-old">{GRP_OLD_LABEL}</span>
+                관심도지수 <strong>{row_o['관심도지수']:.1f}</strong> |
+                방문도지수 <strong>{row_o['방문도지수']:.1f}</strong> |
+                전환효율 <strong>{row_o['전환효율']:.2f}</strong> |
+                Gap <strong style="color:{gap_color_o};">{row_o['Gap']:+.1f}</strong>
+                </div>
+                """, unsafe_allow_html=True)
+    
+            col1, col2 = st.columns(2)
+            with col1:
+                # 레이더 — 관심도 vs 방문도
+                cats = AGE_LABELS + [AGE_LABELS[0]]
+                i_vals = [df_age_sel.loc[a, "관심도지수"] if a in df_age_sel.index else 0 for a in AGE_LABELS] + \
+                         [df_age_sel.loc[AGE_LABELS[0], "관심도지수"] if AGE_LABELS[0] in df_age_sel.index else 0]
+                v_vals = [df_age_sel.loc[a, "방문도지수"] if a in df_age_sel.index else 0 for a in AGE_LABELS] + \
+                         [df_age_sel.loc[AGE_LABELS[0], "방문도지수"] if AGE_LABELS[0] in df_age_sel.index else 0]
+    
+                fig_rv = go.Figure()
+                fig_rv.add_trace(go.Scatterpolar(
+                    r=i_vals, theta=cats, fill="toself", name="관심도",
+                    line_color=COLOR_YOUNG, fillcolor="rgba(29,78,216,0.12)"
+                ))
+                fig_rv.add_trace(go.Scatterpolar(
+                    r=v_vals, theta=cats, fill="toself", name="방문도",
+                    line_color=COLOR_OLD, fillcolor="rgba(5,150,105,0.12)"
+                ))
+                fig_rv.update_layout(
+                    polar=dict(
+                        radialaxis=dict(visible=True, range=[0, 100], gridcolor=GRID_COLOR, color="#475569"),
+                        angularaxis=dict(gridcolor=GRID_COLOR, color="#0F172A"),
+                        bgcolor="#F8FAFC"
+                    ),
+                    paper_bgcolor="#FFFFFF",
+                    font_color="#0F172A",
+                    legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
+                    title=dict(text=f"{sel_cmp} — 관심도 vs 방문도 레이더", font_color="#1D4ED8"),
+                    margin=dict(l=60, r=60, t=70, b=50)
+                )
+                st.plotly_chart(fig_rv, use_container_width=True, key='chart_app_fig_rv_40')
+    
+            with col2:
+                fig_bar_cmp = go.Figure()
+                # Add Interest Index bar
+                fig_bar_cmp.add_trace(go.Bar(
+                    x=df_age_sel.index,
+                    y=df_age_sel["관심도지수"],
+                    name="관심도",
+                    marker_color=COLOR_YOUNG
+                ))
+                # Add Visit Index bar
+                fig_bar_cmp.add_trace(go.Bar(
+                    x=df_age_sel.index,
+                    y=df_age_sel["방문도지수"],
+                    name="방문도",
+                    marker_color=COLOR_OLD
+                ))
+                # Add Gap line
+                df_age_gap = df_age_sel.copy()
+                df_age_gap["Gap"] = df_age_gap["관심도지수"] - df_age_gap["방문도지수"]
+                fig_bar_cmp.add_trace(go.Scatter(
+                    x=df_age_gap.index,
+                    y=df_age_gap["Gap"],
+                    name="격차 (관심-방문)",
+                    mode="lines+markers+text",
+                    line=dict(color="#EF4444", width=3, dash="dot"),
+                    marker=dict(size=8, symbol="diamond"),
+                    text=[f"{val:+.1f}" for val in df_age_gap["Gap"]],
+                    textposition="top center"
+                ))
+                fig_bar_cmp.update_layout(
+                    **LAYOUT_BASE,
+                    legend=dict(bgcolor="rgba(0,0,0,0)", orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5),
+                    margin=dict(l=0, r=0, t=65, b=50),
+                    title=dict(text=f"{sel_cmp} — 연령대별 관심도 vs 방문도 및 Gap", font_color="#1D4ED8")
+                )
+                fig_bar_cmp.update_xaxes(gridcolor=GRID_COLOR)
+                fig_bar_cmp.update_yaxes(gridcolor=GRID_COLOR)
+                st.plotly_chart(fig_bar_cmp, use_container_width=True, key='chart_app_fig_bar_cmp_41')
+    
+    
+            st.markdown(f"""
+            <div style="background-color:#F5F3FF; border-left:4px solid #8B5CF6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+                <span style="font-weight:700; color:#6D28D9; font-size:0.95rem;">💡 [선택 지역 세대별·지역별 심층 매칭 인사이트]</span>
+                <p style="margin:6px 0 0 0; font-size:0.88rem; color:#475569; line-height:1.6;">
+                    선택하신 <strong>{sel_cmp}</strong>에 대한 세부 연령대별 레이더 분석 결과, 청년층과 중장년층 간의 탐색 채널과 실제 방문 체류 거동의 편차가 가장 뚜렷하게 관찰됩니다. 특히, 하단 <strong>시/군/구별 격차 분석</strong>을 통해 관심만 높고 방문으로 매칭되지 않는 취약 지자체(관심-방문 큰 Gap 지역)와, 외국인 유입 충성도가 높은 거점 도시가 명확하게 세분화됩니다. 해당 취약 시군에는 <strong>소셜 버즈를 자극할 수 있는 팝업 스토어 유치와 현지 체험형 테마 관광 패키지 연계 개발</strong>이 필수로 제안됩니다.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+            st.markdown("---")
+            st.markdown(f"#### 🏙️ {sel_cmp} 내 세부 시/군/구별 관심도 vs 방문도 격차 분석")
+            
+            # Select age group for city comparison
+            sel_age_cmp = st.selectbox("시/군/구 분석 연령층 선택", ["전체", "청년층", "중장년층"], key="cmp_age_detail")
+            
+            df_sigun_i = get_sigun_interest(sel_cmp, sel_age_cmp)
+            df_sigun_v = get_sigun_visit(sel_cmp, sel_age_cmp)
+            
+            if not df_sigun_i.empty and not df_sigun_v.empty:
+                # Merge on city
+                df_sigun_cmp = pd.merge(
+                    df_sigun_i[["city", "interest_score"]],
+                    df_sigun_v[["city", "visit_score"]],
+                    on="city"
+                )
+                df_sigun_cmp["gap"] = (df_sigun_cmp["interest_score"] - df_sigun_cmp["visit_score"]).round(1)
+                df_sigun_cmp = df_sigun_cmp.sort_values(by="interest_score", ascending=False)
+                
+                # Grouped bar chart comparing interest vs visit
+                df_melt_sigun = df_sigun_cmp.melt(
+                    id_vars=["city", "gap"],
+                    value_vars=["interest_score", "visit_score"],
+                    var_name="구분",
+                    value_name="지수"
+                )
+                df_melt_sigun["구분"] = df_melt_sigun["구분"].map({"interest_score": "관심도", "visit_score": "방문도"})
+                
+                fig_sigun_cmp = px.bar(
+                    df_melt_sigun,
+                    x="city",
+                    y="지수",
+                    color="구분",
+                    barmode="group",
+                    color_discrete_map={"관심도": "#3B82F6", "방문도": "#10B981"},
+                    title=f"📊 {sel_cmp} 시/군/구별 {sel_age_cmp} 관심도 vs 방문도 지수 비교",
+                    labels={"지수": "지수 (100점 만점)", "city": "시/군/구", "구분": "지표", "gap": "격차"},
+                    hover_data={"gap": True, "지수": ":.1f"}
+                )
+                fig_sigun_cmp.update_layout(
+                    **LAYOUT_BASE,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    xaxis_title="시/군/구",
+                    yaxis_title="지수 (100점 만점)",
+                    margin=dict(l=20, r=20, t=50, b=50)
+                )
+                st.plotly_chart(fig_sigun_cmp, use_container_width=True, key='chart_app_fig_sigun_cmp_42')
+                
+                # Table of comparison
+                st.markdown(f"##### 🔢 {sel_cmp} 시/군/구별 세부 격차 데이터")
+                df_tbl_comp = df_sigun_cmp.copy()
+                df_tbl_comp.columns = ["시/군/구", "관심도 지수", "방문도 지수", "격차 (관심-방문)"]
+                st.dataframe(df_tbl_comp, use_container_width=True, hide_index=True)
+                
+                # Insight card
+                y_gap_city = df_sigun_cmp.sort_values(by="gap", ascending=False).iloc[0]
+                v_high_city = df_sigun_cmp.sort_values(by="visit_score", ascending=False).iloc[0]
+                st.markdown(f"""
+                <div style="background-color:#F8FAFC; border-left:4px solid #8B5CF6; padding:16px 20px; border-radius:8px; margin-top:16px; box-shadow:0 4px 12px rgba(139,92,246,0.06);">
+                    <span style="font-weight:700; color:#7C3AED;">📌 [시/군/구 격차 분석 인사이트]</span> 
+                    <strong>{sel_cmp}</strong> 내에서 <strong>{y_gap_city['city']}</strong>(격차: {y_gap_city['gap']:+.1f})는 온라인 상의 높은 외국인 관심도 대비 실제 체류/방문 전환이 가장 취약합니다. 
+                    반면 <strong>{v_high_city['city']}</strong>(방문지수: {v_high_city['visit_score']:.1f})는 실질적인 외국인 방문이 집중되는 주요 거점 도시입니다.
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.warning("⚠️ 해당 지역의 세부 시/군/구 데이터를 불러올 수 없습니다.")
+    
+    
+    
+    # ─────────────────────────────────────────────────────────
+    # 푸터
+    # ─────────────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align:center;color:#94A3B8;font-size:0.8rem;padding:8px;">
+    📊 인스타그램 | 캐치테이블 | 네이버 지도 | 구글 트렌드 | TripAdvisor | Tumblr | KKday | GetYourGuide | Creatrip | KTO | 2025.06 ~ 2026.05 기준 | 서울·부산·제주 제외 14개 시도<br>
+    본 지수는 각 플랫폼에서 수집된 외래객 관심·방문 데이터를 정규화한 후 연령그룹(청년층, 중장년층)별 분포 비율을 반영하여 중간값(Median)으로 통합한 결과입니다.
+    </div>
+    """, unsafe_allow_html=True)
 
 
+if __name__ == '__main__':
 
-# ─────────────────────────────────────────────────────────
-# 푸터
-# ─────────────────────────────────────────────────────────
-st.markdown("---")
-st.markdown("""
-<div style="text-align:center;color:#94A3B8;font-size:0.8rem;padding:8px;">
-📊 인스타그램 | 캐치테이블 | 네이버 지도 | 구글 트렌드 | TripAdvisor | Tumblr | KKday | GetYourGuide | Creatrip | KTO | 2025.06 ~ 2026.05 기준 | 서울·부산·제주 제외 14개 시도<br>
-본 지수는 각 플랫폼에서 수집된 외래객 관심·방문 데이터를 정규화한 후 연령그룹(청년층, 중장년층)별 분포 비율을 반영하여 중간값(Median)으로 통합한 결과입니다.
-</div>
-""", unsafe_allow_html=True)
+    render_korea_trip_data2_dashboard()
+
